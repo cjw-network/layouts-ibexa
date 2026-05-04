@@ -18,11 +18,8 @@ use function array_unique;
 use function array_values;
 use function in_array;
 use function is_array;
-use function mb_strtolower;
-use function preg_replace;
 use function sort;
-use function trim;
-use function ucwords;
+use function Symfony\Component\String\u;
 
 final class IbexaConfigProvider implements ConfigProviderInterface
 {
@@ -49,7 +46,7 @@ final class IbexaConfigProvider implements ConfigProviderInterface
 
         $validViews = [];
         $validParameters = [];
-        $contentTypeIdentifier = $block->getParameter($this->parameterName)->getValue();
+        $contentTypeIdentifier = $block->getParameter($this->parameterName)->value;
 
         foreach ($this->groupsBySiteAccess as $siteAccess => $groups) {
             if (in_array(IbexaAdminUiBundle::ADMIN_GROUP_NAME, $groups, true)) {
@@ -71,7 +68,7 @@ final class IbexaConfigProvider implements ConfigProviderInterface
                         $validViews[$view] = $view;
                         $validParameters[$view] ??= null;
 
-                        /** @var array<string>|null $viewConfigValidParameters */
+                        /** @var string[]|null $viewConfigValidParameters */
                         $viewConfigValidParameters = $viewConfig['params']['valid_parameters'] ?? null;
 
                         if (is_array($viewConfigValidParameters)) {
@@ -86,9 +83,9 @@ final class IbexaConfigProvider implements ConfigProviderInterface
 
         sort($validViews);
 
-        $this->viewTypes[$block->getId()->toString()] ??= $this->buildViewTypes($validViews, $validParameters);
+        $this->viewTypes[$block->id->toString()] ??= $this->buildViewTypes($validViews, $validParameters);
 
-        return $this->viewTypes[$block->getId()->toString()];
+        return $this->viewTypes[$block->id->toString()];
     }
 
     /**
@@ -104,10 +101,10 @@ final class IbexaConfigProvider implements ConfigProviderInterface
         return array_combine(
             $validViews,
             array_map(
-                fn (string $view) => ViewType::fromArray(
+                static fn (string $view): ViewType => ViewType::fromArray(
                     [
                         'identifier' => $view,
-                        'name' => $this->humanize($view),
+                        'name' => u($view)->replace('_', ' ')->title(true)->toString(),
                         'itemViewTypes' => [
                             'standard' => ItemViewType::fromArray(
                                 [
@@ -124,13 +121,5 @@ final class IbexaConfigProvider implements ConfigProviderInterface
                 $validViews,
             ),
         );
-    }
-
-    /**
-     * Returns the human readable version of the provided string.
-     */
-    private function humanize(string $text): string
-    {
-        return ucwords(mb_strtolower(trim(preg_replace(['/([A-Z])/', '/[_\s]+/'], ['_$1', ' '], $text) ?? '')));
     }
 }

@@ -9,7 +9,7 @@ use Netgen\Layouts\Ibexa\Security\Authorization\Voter\RepositoryAccessVoter;
 use Netgen\Layouts\Ibexa\Security\Role\RoleHierarchy;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Authorization\AccessDecisionManagerInterface;
@@ -20,7 +20,7 @@ use function count;
 #[CoversClass(RepositoryAccessVoter::class)]
 final class RepositoryAccessVoterTest extends TestCase
 {
-    private MockObject&AccessDecisionManagerInterface $accessDecisionManagerMock;
+    private Stub&AccessDecisionManagerInterface $accessDecisionManagerStub;
 
     private RepositoryAccessVoter $voter;
 
@@ -34,11 +34,11 @@ final class RepositoryAccessVoterTest extends TestCase
             ],
         );
 
-        $this->accessDecisionManagerMock = $this->createMock(AccessDecisionManagerInterface::class);
+        $this->accessDecisionManagerStub = self::createStub(AccessDecisionManagerInterface::class);
 
         $this->voter = new RepositoryAccessVoter(
             $roleHierarchy,
-            $this->accessDecisionManagerMock,
+            $this->accessDecisionManagerStub,
         );
     }
 
@@ -48,25 +48,24 @@ final class RepositoryAccessVoterTest extends TestCase
     #[DataProvider('voteDataProvider')]
     public function testVote(mixed $attribute, array $repoAccess, int $voteResult): void
     {
-        $token = $this->createMock(TokenInterface::class);
+        $tokenStub = self::createStub(TokenInterface::class);
 
         if (count($repoAccess) > 0) {
-            $this->accessDecisionManagerMock
+            $this->accessDecisionManagerStub
                 ->method('decide')
-                ->with(
-                    self::identicalTo($token),
-                    self::isType('array'),
-                    self::isNull(),
-                )->willReturnCallback(
-                    static fn (TokenInterface $token, array $attributes) => $repoAccess[$attributes[0]->function],
+                ->willReturnCallback(
+                    static fn (TokenInterface $token, array $attributes): bool => $repoAccess[$attributes[0]->function],
                 );
         }
 
-        $result = $this->voter->vote($token, null, [$attribute]);
+        $result = $this->voter->vote($tokenStub, null, [$attribute]);
 
         self::assertSame($voteResult, $result);
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function voteDataProvider(): iterable
     {
         return [

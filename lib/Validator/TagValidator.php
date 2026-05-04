@@ -12,14 +12,16 @@ use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
-use function is_scalar;
+use function is_int;
 
 /**
  * Validates if the provided value is an ID of a valid tag in Netgen Tags.
  */
 final class TagValidator extends ConstraintValidator
 {
-    public function __construct(private TagsService $tagsService) {}
+    public function __construct(
+        private TagsService $tagsService,
+    ) {}
 
     public function validate(mixed $value, Constraint $constraint): void
     {
@@ -31,14 +33,14 @@ final class TagValidator extends ConstraintValidator
             throw new UnexpectedTypeException($constraint, Tag::class);
         }
 
-        if (!is_scalar($value)) {
-            throw new UnexpectedTypeException($value, 'scalar');
+        if (!is_int($value)) {
+            throw new UnexpectedTypeException($value, 'int');
         }
 
         if (!$constraint->allowInvalid) {
             try {
                 $this->tagsService->sudo(
-                    fn (): APITag => $this->tagsService->loadTag((int) $value),
+                    static fn (TagsService $tagsService): APITag => $tagsService->loadTag($value),
                 );
             } catch (NotFoundException) {
                 $this->context->buildViolation($constraint->message)

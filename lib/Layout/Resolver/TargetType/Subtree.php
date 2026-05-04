@@ -12,6 +12,8 @@ use Netgen\Layouts\Layout\Resolver\ValueObjectProviderInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Validator\Constraints;
 
+use function array_map;
+
 final class Subtree extends TargetType implements ValueObjectProviderInterface
 {
     public function __construct(
@@ -29,9 +31,9 @@ final class Subtree extends TargetType implements ValueObjectProviderInterface
     {
         return [
             new Constraints\NotBlank(),
-            new Constraints\Type(['type' => 'numeric']),
-            new Constraints\GreaterThanOrEqual(['value' => 0]),
-            new IbexaConstraints\Location(['allowInvalid' => true]),
+            new Constraints\Type(type: 'int'),
+            new Constraints\PositiveOrZero(),
+            new IbexaConstraints\Location(allowInvalid: true),
         ];
     }
 
@@ -40,20 +42,26 @@ final class Subtree extends TargetType implements ValueObjectProviderInterface
      */
     public function provideValue(Request $request): ?array
     {
-        return $this->contentExtractor->extractLocation($request)?->path;
+        $path = $this->contentExtractor->extractLocation($request)?->path;
+
+        if ($path === null) {
+            return null;
+        }
+
+        return array_map(intval(...), $path);
     }
 
-    public function getValueObject(mixed $value): ?object
+    public function getValueObject(int|string $value): ?object
     {
         return $this->valueObjectProvider->getValueObject($value);
     }
 
-    public function export(mixed $value): ?string
+    public function export(int|string $value): ?string
     {
         return $this->remoteIdConverter->toLocationRemoteId((int) $value);
     }
 
-    public function import(mixed $value): ?int
+    public function import(int|string|null $value): int
     {
         return $this->remoteIdConverter->toLocationId((string) $value) ?? 0;
     }

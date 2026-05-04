@@ -15,22 +15,26 @@ use function is_array;
 
 final class ObjectStateType extends AbstractType
 {
-    public function __construct(private ObjectStateService $objectStateService) {}
+    public function __construct(
+        private ObjectStateService $objectStateService,
+    ) {}
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefault('translation_domain', 'nglayouts_forms');
 
-        $resolver->setDefault('states', []);
-        $resolver->setRequired(['states']);
-        $resolver->setAllowedTypes('states', 'array');
-
         $resolver->setDefault(
             'choices',
-            fn (Options $options): array => $this->getObjectStates($options),
+            fn (Options $options): array => $this->getObjectStates($options['states']),
         );
 
         $resolver->setDefault('choice_translation_domain', false);
+
+        $resolver
+            ->define('states')
+            ->required()
+            ->default([])
+            ->allowedTypes('array');
     }
 
     public function getParent(): string
@@ -41,14 +45,15 @@ final class ObjectStateType extends AbstractType
     /**
      * Returns the allowed content states from Ibexa CMS.
      *
+     * @param array<string, string[]|bool> $configuredGroups
+     *
      * @return array<string, string[]>
      */
-    private function getObjectStates(Options $options): array
+    private function getObjectStates(array $configuredGroups): array
     {
         $allObjectStates = [];
 
         $groups = $this->objectStateService->loadObjectStateGroups();
-        $configuredGroups = $options['states'];
 
         foreach ($groups as $group) {
             $configuredGroups += [$group->identifier => true];

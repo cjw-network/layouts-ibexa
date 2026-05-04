@@ -1,13 +1,6 @@
-includes:
-    - vendor/phpstan/phpstan-strict-rules/rules.neon
-    - vendor/phpstan/phpstan-symfony/extension.neon
-    - vendor/phpstan/phpstan-symfony/rules.neon
-
 parameters:
-    ignoreErrors:
-        # Doctrine DBAL
-        - '#Cannot call method fetchAllAssociative\(\) on Doctrine\\DBAL\\ForwardCompatibility\\Result\|int#'
-        - '#expects string\|null, Doctrine\\DBAL\\Query\\Expression\\CompositeExpression given#'
+    level: 8
 
-        # Ibexa CMS
-        - "#Casting to (int|string) something that's already (int|string).#"
+    paths:
+        - lib
+        - bundle

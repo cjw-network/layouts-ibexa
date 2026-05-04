@@ -10,7 +10,7 @@ use Netgen\Layouts\Parameters\ParameterType;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\Validator\Constraints;
 
-use function array_values;
+use function array_first;
 use function is_array;
 
 /**
@@ -25,16 +25,23 @@ final class ContentTypeType extends ParameterType
 
     public function configureOptions(OptionsResolver $optionsResolver): void
     {
-        $optionsResolver->setDefault('multiple', false);
-        $optionsResolver->setDefault('types', []);
+        $optionsResolver
+            ->define('multiple')
+            ->required()
+            ->default(false)
+            ->allowedTypes('bool');
 
-        $optionsResolver->setRequired(['multiple', 'types']);
-
-        $optionsResolver->setAllowedTypes('multiple', 'bool');
-        $optionsResolver->setAllowedTypes('types', 'array');
+        $optionsResolver
+            ->define('types')
+            ->required()
+            ->default([])
+            ->allowedTypes('array');
     }
 
-    public function fromHash(ParameterDefinition $parameterDefinition, mixed $value)
+    /**
+     * @return string[]|string|null
+     */
+    public function fromHash(ParameterDefinition $parameterDefinition, mixed $value): string|array|null
     {
         if ($value === null || $value === []) {
             return null;
@@ -44,7 +51,7 @@ final class ContentTypeType extends ParameterType
             return is_array($value) ? $value : [$value];
         }
 
-        return is_array($value) ? array_values($value)[0] : $value;
+        return is_array($value) ? array_first($value) : $value;
     }
 
     public function isValueEmpty(ParameterDefinition $parameterDefinition, mixed $value): bool
@@ -54,23 +61,19 @@ final class ContentTypeType extends ParameterType
 
     protected function getValueConstraints(ParameterDefinition $parameterDefinition, mixed $value): array
     {
-        $options = $parameterDefinition->getOptions();
-
         $contentTypeConstraints = [
-            new Constraints\Type(['type' => 'string']),
-            new IbexaConstraints\ContentType(['allowedTypes' => $parameterDefinition->getOption('types')]),
+            new Constraints\Type(type: 'string'),
+            new IbexaConstraints\ContentType(allowedTypes: $parameterDefinition->getOption('types')),
         ];
 
-        if ($options['multiple'] === false) {
+        if ($parameterDefinition->getOption('multiple') === false) {
             return $contentTypeConstraints;
         }
 
         return [
-            new Constraints\Type(['type' => 'array']),
+            new Constraints\Type(type: 'array'),
             new Constraints\All(
-                [
-                    'constraints' => $contentTypeConstraints,
-                ],
+                constraints: $contentTypeConstraints,
             ),
         ];
     }

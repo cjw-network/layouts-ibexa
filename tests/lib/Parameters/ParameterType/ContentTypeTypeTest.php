@@ -9,15 +9,14 @@ use Ibexa\Core\Base\Exceptions\NotFoundException;
 use Ibexa\Core\Repository\Repository;
 use Ibexa\Core\Repository\Values\ContentType\ContentType as IbexaContentType;
 use Netgen\Layouts\Ibexa\Parameters\ParameterType\ContentTypeType;
-use Netgen\Layouts\Ibexa\Tests\Validator\RepositoryValidatorFactory;
+use Netgen\Layouts\Ibexa\Tests\TestCase\ValidatorTestCaseTrait;
 use Netgen\Layouts\Parameters\ParameterDefinition;
 use Netgen\Layouts\Tests\Parameters\ParameterType\ParameterTypeTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\OptionsResolver\Exception\InvalidArgumentException;
-use Symfony\Component\Validator\Validation;
 
 use function is_array;
 
@@ -25,26 +24,26 @@ use function is_array;
 final class ContentTypeTypeTest extends TestCase
 {
     use ParameterTypeTestTrait;
+    use ValidatorTestCaseTrait;
 
-    private MockObject&Repository $repositoryMock;
+    private Stub&Repository $repositoryStub;
 
-    private MockObject&ContentTypeService $contentTypeServiceMock;
+    private Stub&ContentTypeService $contentTypeServiceStub;
 
     protected function setUp(): void
     {
-        $this->contentTypeServiceMock = $this->createMock(ContentTypeService::class);
-        $this->repositoryMock = $this->createPartialMock(Repository::class, ['sudo', 'getContentTypeService']);
+        $this->contentTypeServiceStub = self::createStub(ContentTypeService::class);
+        $this->repositoryStub = self::createStub(Repository::class);
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('sudo')
-            ->with(self::anything())
             ->willReturnCallback(
-                fn (callable $callback) => $callback($this->repositoryMock),
+                fn (callable $callback): mixed => $callback($this->repositoryStub),
             );
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('getContentTypeService')
-            ->willReturn($this->contentTypeServiceMock);
+            ->willReturn($this->contentTypeServiceStub);
 
         $this->type = new ContentTypeType();
     }
@@ -61,8 +60,8 @@ final class ContentTypeTypeTest extends TestCase
     #[DataProvider('validOptionsDataProvider')]
     public function testValidOptions(array $options, array $resolvedOptions): void
     {
-        $parameter = $this->getParameterDefinition($options);
-        self::assertSame($resolvedOptions, $parameter->getOptions());
+        $parameterDefinition = $this->getParameterDefinition($options);
+        self::assertSame($resolvedOptions, $parameterDefinition->options);
     }
 
     /**
@@ -77,7 +76,7 @@ final class ContentTypeTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing valid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function validOptionsDataProvider(): iterable
     {
@@ -118,18 +117,18 @@ final class ContentTypeTypeTest extends TestCase
             ],
             [
                 [
-                    'types' => [42],
+                    'types' => ['type1'],
                 ],
                 [
                     'multiple' => false,
-                    'types' => [42],
+                    'types' => ['type1'],
                 ],
             ],
         ];
     }
 
     /**
-     * Provider for testing invalid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function invalidOptionsDataProvider(): iterable
     {
@@ -138,8 +137,15 @@ final class ContentTypeTypeTest extends TestCase
                 [
                     'multiple' => 'true',
                 ],
+            ],
+            [
                 [
                     'undefined_value' => 'Value',
+                ],
+            ],
+            [
+                [
+                    'types' => 'type1',
                 ],
             ],
         ];
@@ -153,7 +159,7 @@ final class ContentTypeTypeTest extends TestCase
         if ($value !== null) {
             $options = ['multiple' => is_array($value)];
 
-            $this->contentTypeServiceMock
+            $this->contentTypeServiceStub
                 ->method('loadContentTypeByIdentifier')
                 ->willReturnCallback(
                     static fn (string $identifier): IbexaContentType => match (true) {
@@ -163,17 +169,15 @@ final class ContentTypeTypeTest extends TestCase
                 );
         }
 
-        $parameter = $this->getParameterDefinition($options, $required);
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new RepositoryValidatorFactory($this->repositoryMock))
-            ->getValidator();
+        $parameterDefinition = $this->getParameterDefinition($options, $required);
+        $validator = $this->createValidator($this->repositoryStub);
 
-        $errors = $validator->validate($value, $this->type->getConstraints($parameter, $value));
+        $errors = $validator->validate($value, $this->type->getConstraints($parameterDefinition, $value));
         self::assertSame($isValid, $errors->count() === 0);
     }
 
     /**
-     * Provider for testing valid parameter values.
+     * @return iterable<mixed>
      */
     public static function validationDataProvider(): iterable
     {
@@ -211,6 +215,9 @@ final class ContentTypeTypeTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function fromHashDataProvider(): iterable
     {
         return [
@@ -225,13 +232,13 @@ final class ContentTypeTypeTest extends TestCase
                 false,
             ],
             [
-                42,
-                42,
+                'type1',
+                'type1',
                 false,
             ],
             [
-                [42, 43],
-                42,
+                ['type1', 'type2'],
+                'type1',
                 false,
             ],
             [
@@ -245,13 +252,13 @@ final class ContentTypeTypeTest extends TestCase
                 true,
             ],
             [
-                42,
-                [42],
+                'type1',
+                ['type1'],
                 true,
             ],
             [
-                [42, 43],
-                [42, 43],
+                ['type1', 'type2'],
+                ['type1', 'type2'],
                 true,
             ],
         ];
@@ -264,17 +271,17 @@ final class ContentTypeTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing if the value is empty.
+     * @return iterable<mixed>
      */
     public static function emptyDataProvider(): iterable
     {
         return [
             [null, true],
             [[], true],
-            [42, false],
-            [[42], false],
+            ['type1', false],
+            [['type1'], false],
             [0, false],
-            ['42', false],
+            [42, false],
             ['', false],
         ];
     }

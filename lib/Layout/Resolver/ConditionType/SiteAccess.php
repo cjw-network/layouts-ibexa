@@ -25,19 +25,17 @@ final class SiteAccess extends ConditionType
     {
         return [
             new Constraints\NotBlank(),
-            new Constraints\Type(['type' => 'array']),
+            new Constraints\Type(type: 'array'),
             new Constraints\All(
-                [
-                    'constraints' => [
-                        new Constraints\Type(['type' => 'string']),
-                        new IbexaConstraints\SiteAccess(),
-                    ],
+                constraints: [
+                    new Constraints\Type(type: 'string'),
+                    new IbexaConstraints\SiteAccess(),
                 ],
             ),
         ];
     }
 
-    public function matches(Request $request, mixed $value): bool
+    public function matches(Request $request, int|string|array $value): bool
     {
         $siteAccess = $request->attributes->get('siteaccess');
         if (!$siteAccess instanceof IbexaSiteAccess) {

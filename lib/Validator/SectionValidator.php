@@ -21,7 +21,9 @@ use function is_string;
  */
 final class SectionValidator extends ConstraintValidator
 {
-    public function __construct(private Repository $repository) {}
+    public function __construct(
+        private Repository $repository,
+    ) {}
 
     public function validate(mixed $value, Constraint $constraint): void
     {
@@ -39,7 +41,7 @@ final class SectionValidator extends ConstraintValidator
 
         try {
             $this->repository->sudo(
-                fn (): APISection => $this->repository->getSectionService()->loadSectionByIdentifier($value),
+                static fn (Repository $repository): APISection => $repository->getSectionService()->loadSectionByIdentifier($value),
             );
         } catch (NotFoundException) {
             $this->context->buildViolation($constraint->message)

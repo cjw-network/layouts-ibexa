@@ -7,7 +7,7 @@ namespace Netgen\Bundle\LayoutsIbexaBundle\DependencyInjection\CompilerPass;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
-use function is_array;
+use function sprintf;
 
 final class DefaultAppPreviewPass implements CompilerPassInterface
 {
@@ -25,14 +25,14 @@ final class DefaultAppPreviewPass implements CompilerPassInterface
             'params' => [],
         ];
 
-        /** @var array<int, string> $siteAccessList */
+        /** @var string[] $siteAccessList */
         $siteAccessList = $container->getParameter('ibexa.site_access.list');
         $scopes = [...['default'], ...$siteAccessList];
 
         foreach ($scopes as $scope) {
             $scopeParams = [
-                "ibexa.site_access.config.{$scope}.content_view",
-                "ibexa.site_access.config.{$scope}.location_view",
+                sprintf('ibexa.site_access.config.%s.content_view', $scope),
+                sprintf('ibexa.site_access.config.%s.location_view', $scope),
             ];
 
             foreach ($scopeParams as $scopeParam) {
@@ -59,7 +59,7 @@ final class DefaultAppPreviewPass implements CompilerPassInterface
      */
     private function addDefaultPreviewRule(?array $scopeRules, array $defaultRule): array
     {
-        $scopeRules = is_array($scopeRules) ? $scopeRules : [];
+        $scopeRules ??= [];
 
         $layoutsRules = $scopeRules['nglayouts_app_preview'] ?? [];
 

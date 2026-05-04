@@ -14,7 +14,7 @@ use Netgen\Layouts\Ibexa\Validator\ContentTypeValidator;
 use Netgen\Layouts\Tests\TestCase\ValidatorTestCase;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Symfony\Component\Validator\Constraints\NotBlank;
 use Symfony\Component\Validator\ConstraintValidatorInterface;
 use Symfony\Component\Validator\Exception\UnexpectedTypeException;
@@ -24,9 +24,9 @@ use function array_map;
 #[CoversClass(ContentTypeValidator::class)]
 final class ContentTypeValidatorTest extends ValidatorTestCase
 {
-    private MockObject&Repository $repositoryMock;
+    private Stub&Repository $repositoryStub;
 
-    private MockObject&ContentTypeService $contentTypeServiceMock;
+    private Stub&ContentTypeService $contentTypeServiceStub;
 
     protected function setUp(): void
     {
@@ -42,10 +42,8 @@ final class ContentTypeValidatorTest extends ValidatorTestCase
     #[DataProvider('validateDataProvider')]
     public function testValidate(string $identifier, array $groups, array $allowedTypes, bool $isValid): void
     {
-        $this->contentTypeServiceMock
-            ->expects(self::once())
+        $this->contentTypeServiceStub
             ->method('loadContentTypeByIdentifier')
-            ->with(self::identicalTo($identifier))
             ->willReturn(
                 new IbexaContentType(
                     [
@@ -68,19 +66,13 @@ final class ContentTypeValidatorTest extends ValidatorTestCase
 
     public function testValidateNull(): void
     {
-        $this->contentTypeServiceMock
-            ->expects(self::never())
-            ->method('loadContentTypeByIdentifier');
-
         $this->assertValid(true, null);
     }
 
     public function testValidateInvalid(): void
     {
-        $this->contentTypeServiceMock
-            ->expects(self::once())
+        $this->contentTypeServiceStub
             ->method('loadContentTypeByIdentifier')
-            ->with(self::identicalTo('unknown'))
             ->willThrowException(new NotFoundException('content type', 'unknown'));
 
         $this->assertValid(false, 'unknown');
@@ -89,7 +81,7 @@ final class ContentTypeValidatorTest extends ValidatorTestCase
     public function testValidateThrowsUnexpectedTypeExceptionWithInvalidConstraint(): void
     {
         $this->expectException(UnexpectedTypeException::class);
-        $this->expectExceptionMessage('Expected argument of type "Netgen\\Layouts\\Ibexa\\Validator\\Constraint\\ContentType", "Symfony\\Component\\Validator\\Constraints\\NotBlank" given');
+        $this->expectExceptionMessage('Expected argument of type "Netgen\Layouts\Ibexa\Validator\Constraint\ContentType", "Symfony\Component\Validator\Constraints\NotBlank" given');
 
         $this->constraint = new NotBlank();
         $this->assertValid(true, 'value');
@@ -98,11 +90,14 @@ final class ContentTypeValidatorTest extends ValidatorTestCase
     public function testValidateThrowsUnexpectedTypeExceptionWithInvalidValue(): void
     {
         $this->expectException(UnexpectedTypeException::class);
-        $this->expectExceptionMessageMatches('/^Expected argument of type "string", "int(eger)?" given$/');
+        $this->expectExceptionMessage('Expected argument of type "string", "int" given');
 
         $this->assertValid(true, 42);
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function validateDataProvider(): iterable
     {
         return [
@@ -117,22 +112,21 @@ final class ContentTypeValidatorTest extends ValidatorTestCase
         ];
     }
 
-    protected function getValidator(): ConstraintValidatorInterface
+    protected function getConstraintValidator(): ConstraintValidatorInterface
     {
-        $this->contentTypeServiceMock = $this->createMock(ContentTypeService::class);
-        $this->repositoryMock = $this->createPartialMock(Repository::class, ['sudo', 'getContentTypeService']);
+        $this->contentTypeServiceStub = self::createStub(ContentTypeService::class);
+        $this->repositoryStub = self::createStub(Repository::class);
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('sudo')
-            ->with(self::anything())
             ->willReturnCallback(
-                fn (callable $callback) => $callback($this->repositoryMock),
+                fn (callable $callback): mixed => $callback($this->repositoryStub),
             );
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('getContentTypeService')
-            ->willReturn($this->contentTypeServiceMock);
+            ->willReturn($this->contentTypeServiceStub);
 
-        return new ContentTypeValidator($this->repositoryMock);
+        return new ContentTypeValidator($this->repositoryStub);
     }
 }

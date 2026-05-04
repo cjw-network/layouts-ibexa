@@ -1,17 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.1/phpunit.xsd"
-    bootstrap="vendor/autoload.php"
-    colors="true"
+    xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
     requireCoverageMetadata="true"
     beStrictAboutOutputDuringTests="true"
-    beStrictAboutChangesToGlobalState="true"
+    displayDetailsOnPhpunitDeprecations="true"
+    displayDetailsOnTestsThatTriggerDeprecations="true"
+    failOnRisky="true"
+    failOnWarning="true"
+    colors="true"
 >
-    <php>
-        <env name="SYMFONY_DEPRECATIONS_HELPER" value="max[self]=0" />
-    </php>
-
     <testsuites>
         <testsuite name="Netgen\Layouts\Ibexa">
             <directory>tests/lib</directory>
@@ -21,10 +19,10 @@
         </testsuite>
     </testsuites>
 
-    <source>
+    <source ignoreSuppressionOfDeprecations="true" ignoreIndirectDeprecations="true">
         <include>
-            <directory suffix=".php">lib</directory>
-            <directory suffix=".php">bundle</directory>
+            <directory>lib</directory>
+            <directory>bundle</directory>
         </include>
         <exclude>
             <directory>bundle/Resources</directory>

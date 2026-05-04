@@ -1,10 +1,10 @@
 {% extends '@nglayouts/block/block.html.twig' %}
 
 {% block content %}
-    {% if not block.parameter('content').empty %}
+    {% if not block.parameter('content').isEmpty %}
         {{ render(
             controller(
-                'ibexa_content:viewAction', {
+                'ibexa_content::viewAction', {
                     'contentId': block.parameter('content').value,
                     'viewType': block.viewType,
                     'layout': false,

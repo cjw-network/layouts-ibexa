@@ -14,31 +14,29 @@ use Netgen\Bundle\LayoutsBundle\Exception\ConfigurationException;
  *
  * This means that the returned values will be the ones defined
  * in the current Ibexa CMS scope of the request.
- *
- * @final
  */
-class ConfigResolverConfiguration implements ConfigurationInterface
+final class ConfigResolverConfiguration implements ConfigurationInterface
 {
     public function __construct(
         private ConfigResolverInterface $configResolver,
-        private ConfigurationInterface $fallbackConfiguration,
+        private ConfigurationInterface $innerConfiguration,
     ) {}
 
     public function hasParameter(string $parameterName): bool
     {
         $hasParam = $this->configResolver->hasParameter(
             $parameterName,
-            ConfigurationInterface::PARAMETER_NAMESPACE,
+            self::PARAMETER_NAMESPACE,
         );
 
         if (!$hasParam) {
-            $hasParam = $this->fallbackConfiguration->hasParameter($parameterName);
+            $hasParam = $this->innerConfiguration->hasParameter($parameterName);
         }
 
         return $hasParam;
     }
 
-    public function getParameter(string $parameterName)
+    public function getParameter(string $parameterName): mixed
     {
         if (!$this->hasParameter($parameterName)) {
             throw ConfigurationException::noParameter($parameterName);
@@ -47,15 +45,15 @@ class ConfigResolverConfiguration implements ConfigurationInterface
         if (
             $this->configResolver->hasParameter(
                 $parameterName,
-                ConfigurationInterface::PARAMETER_NAMESPACE,
+                self::PARAMETER_NAMESPACE,
             )
         ) {
             return $this->configResolver->getParameter(
                 $parameterName,
-                ConfigurationInterface::PARAMETER_NAMESPACE,
+                self::PARAMETER_NAMESPACE,
             );
         }
 
-        return $this->fallbackConfiguration->getParameter($parameterName);
+        return $this->innerConfiguration->getParameter($parameterName);
     }
 }

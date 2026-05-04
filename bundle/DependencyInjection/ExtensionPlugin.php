@@ -23,12 +23,15 @@ use function sprintf;
 
 final class ExtensionPlugin extends BaseExtensionPlugin
 {
-    private const SITEACCCESS_AWARE_SETTINGS = [
+    private const array SITEACCCESS_AWARE_SETTINGS = [
         'view',
         'design',
     ];
 
-    public function __construct(private ContainerBuilder $container, private ExtensionInterface $extension) {}
+    public function __construct(
+        private ContainerBuilder $container,
+        private ExtensionInterface $extension,
+    ) {}
 
     /**
      * Pre-processes the configuration before it is resolved.
@@ -63,10 +66,6 @@ final class ExtensionPlugin extends BaseExtensionPlugin
      *
      * If the original array already has a system key, it will be removed and prepended
      * to configs generated from the original parameters.
-     *
-     * @param mixed[] $configs
-     *
-     * @return mixed[]
      */
     public function preProcessConfiguration(array $configs): array
     {
@@ -79,7 +78,6 @@ final class ExtensionPlugin extends BaseExtensionPlugin
                 $newConfigs[$index] = $config;
             }
 
-            /** @var string $configName */
             foreach (array_keys($config) as $configName) {
                 if (!in_array($configName, self::SITEACCCESS_AWARE_SETTINGS, true)) {
                     unset($config[$configName]);
@@ -108,10 +106,6 @@ final class ExtensionPlugin extends BaseExtensionPlugin
      * The postprocessor calls Ibexa CMS mapConfigArray and mapSettings methods from siteaccess aware
      * configuration processor as per documentation, to make the configuration correctly apply to all
      * siteaccesses.
-     *
-     * @param mixed[] $config
-     *
-     * @return mixed[]
      */
     public function postProcessConfiguration(array $config): array
     {
@@ -122,8 +116,13 @@ final class ExtensionPlugin extends BaseExtensionPlugin
         $processor->mapConfig(
             $config,
             static function (array $config, string $scope, ContextualizerInterface $c): void {
-                $c->setContextualParameter('ibexa_component.parent_locations', $scope, $config['ibexa_component']['parent_locations']);
-                $c->setContextualParameter('ibexa_component.default_parent_location', $scope, $config['ibexa_component']['default_parent_location']);
+                if (isset($config['ibexa_component']['parent_locations'])) {
+                    $c->setContextualParameter('ibexa_component.parent_locations', $scope, $config['ibexa_component']['parent_locations']);
+                }
+
+                if (isset($config['ibexa_component']['default_parent_location'])) {
+                    $c->setContextualParameter('ibexa_component.default_parent_location', $scope, $config['ibexa_component']['default_parent_location']);
+                }
             },
         );
 
@@ -146,9 +145,6 @@ final class ExtensionPlugin extends BaseExtensionPlugin
         return $config;
     }
 
-    /**
-     * @return string[]
-     */
     public function appendConfigurationFiles(): array
     {
         return [
@@ -156,9 +152,6 @@ final class ExtensionPlugin extends BaseExtensionPlugin
         ];
     }
 
-    /**
-     * @return \Netgen\Bundle\LayoutsBundle\DependencyInjection\ConfigurationNodeInterface[]
-     */
     protected function getConfigurationNodes(): array
     {
         return [

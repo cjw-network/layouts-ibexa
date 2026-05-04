@@ -11,6 +11,7 @@ use Ibexa\Contracts\Core\Repository\SearchService;
 use Ibexa\Contracts\Core\Repository\Values\Content\Location;
 use Ibexa\Contracts\Core\Repository\Values\Content\LocationQuery;
 use Ibexa\Contracts\Core\Repository\Values\Content\Query\Criterion;
+use Ibexa\Contracts\Core\Repository\Values\Content\Query\CriterionInterface;
 use Ibexa\Contracts\Core\Repository\Values\Content\Search\SearchHit;
 use Ibexa\Contracts\Core\Repository\Values\ValueObject;
 use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
@@ -47,10 +48,10 @@ final class ContentSearchHandler implements QueryTypeHandlerInterface
         private SearchService $searchService,
         private ConfigResolverInterface $configResolver,
     ) {
-        $this->setSectionHandler($sectionHandler);
-        $this->setObjectStateHandler($objectStateHandler);
-        $this->setContentProvider($contentProvider);
-        $this->setLocationService($locationService);
+        $this->sectionHandler = $sectionHandler;
+        $this->objectStateHandler = $objectStateHandler;
+        $this->contentProvider = $contentProvider;
+        $this->locationService = $locationService;
     }
 
     public function buildParameters(ParameterBuilderInterface $builder): void
@@ -115,7 +116,7 @@ final class ContentSearchHandler implements QueryTypeHandlerInterface
 
     public function isContextual(Query $query): bool
     {
-        return $query->getParameter('use_current_location')->getValue() === true || $query->getParameter('use_parent_location')->getValue() === true;
+        return $query->getParameter('use_current_location')->value === true || $query->getParameter('use_parent_location')->value === true;
     }
 
     /**
@@ -143,7 +144,7 @@ final class ContentSearchHandler implements QueryTypeHandlerInterface
 
         $criteria = array_filter(
             $criteria,
-            static fn (?Criterion $criterion): bool => $criterion instanceof Criterion,
+            static fn (?CriterionInterface $criterion): bool => $criterion instanceof CriterionInterface,
         );
 
         $locationQuery->filter = new Criterion\LogicalAnd($criteria);

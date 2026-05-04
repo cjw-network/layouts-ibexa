@@ -9,15 +9,14 @@ use Ibexa\Contracts\Core\Repository\Values\Content\Section as IbexaSection;
 use Ibexa\Core\Base\Exceptions\NotFoundException;
 use Ibexa\Core\Repository\Repository;
 use Netgen\Layouts\Ibexa\Parameters\ParameterType\SectionType;
-use Netgen\Layouts\Ibexa\Tests\Validator\RepositoryValidatorFactory;
+use Netgen\Layouts\Ibexa\Tests\TestCase\ValidatorTestCaseTrait;
 use Netgen\Layouts\Parameters\ParameterDefinition;
 use Netgen\Layouts\Tests\Parameters\ParameterType\ParameterTypeTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\OptionsResolver\Exception\InvalidArgumentException;
-use Symfony\Component\Validator\Validation;
 
 use function is_array;
 
@@ -25,26 +24,26 @@ use function is_array;
 final class SectionTypeTest extends TestCase
 {
     use ParameterTypeTestTrait;
+    use ValidatorTestCaseTrait;
 
-    private MockObject&Repository $repositoryMock;
+    private Stub&Repository $repositoryStub;
 
-    private MockObject&SectionService $sectionServiceMock;
+    private Stub&SectionService $sectionServiceStub;
 
     protected function setUp(): void
     {
-        $this->sectionServiceMock = $this->createMock(SectionService::class);
-        $this->repositoryMock = $this->createPartialMock(Repository::class, ['sudo', 'getSectionService']);
+        $this->sectionServiceStub = self::createStub(SectionService::class);
+        $this->repositoryStub = self::createStub(Repository::class);
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('sudo')
-            ->with(self::anything())
             ->willReturnCallback(
-                fn (callable $callback) => $callback($this->repositoryMock),
+                fn (callable $callback): mixed => $callback($this->repositoryStub),
             );
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('getSectionService')
-            ->willReturn($this->sectionServiceMock);
+            ->willReturn($this->sectionServiceStub);
 
         $this->type = new SectionType();
     }
@@ -61,8 +60,8 @@ final class SectionTypeTest extends TestCase
     #[DataProvider('validOptionsDataProvider')]
     public function testValidOptions(array $options, array $resolvedOptions): void
     {
-        $parameter = $this->getParameterDefinition($options);
-        self::assertSame($resolvedOptions, $parameter->getOptions());
+        $parameterDefinition = $this->getParameterDefinition($options);
+        self::assertSame($resolvedOptions, $parameterDefinition->options);
     }
 
     /**
@@ -77,7 +76,7 @@ final class SectionTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing valid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function validOptionsDataProvider(): iterable
     {
@@ -129,7 +128,7 @@ final class SectionTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing invalid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function invalidOptionsDataProvider(): iterable
     {
@@ -138,14 +137,15 @@ final class SectionTypeTest extends TestCase
                 [
                     'multiple' => 'true',
                 ],
+            ],
+            [
                 [
                     'undefined_value' => 'Value',
                 ],
+            ],
+            [
                 [
-                    'sections' => 42,
-                ],
-                [
-                    'sections' => [42],
+                    'sections' => 'section1',
                 ],
             ],
         ];
@@ -159,7 +159,7 @@ final class SectionTypeTest extends TestCase
         if ($value !== null) {
             $options = ['multiple' => is_array($value)];
 
-            $this->sectionServiceMock
+            $this->sectionServiceStub
                 ->method('loadSectionByIdentifier')
                 ->willReturnCallback(
                     static fn (string $identifier): IbexaSection => match (true) {
@@ -169,17 +169,15 @@ final class SectionTypeTest extends TestCase
                 );
         }
 
-        $parameter = $this->getParameterDefinition($options, $required);
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new RepositoryValidatorFactory($this->repositoryMock))
-            ->getValidator();
+        $parameterDefinition = $this->getParameterDefinition($options, $required);
+        $validator = $this->createValidator($this->repositoryStub);
 
-        $errors = $validator->validate($value, $this->type->getConstraints($parameter, $value));
+        $errors = $validator->validate($value, $this->type->getConstraints($parameterDefinition, $value));
         self::assertSame($isValid, $errors->count() === 0);
     }
 
     /**
-     * Provider for testing valid parameter values.
+     * @return iterable<mixed>
      */
     public static function validationDataProvider(): iterable
     {
@@ -217,6 +215,9 @@ final class SectionTypeTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function fromHashDataProvider(): iterable
     {
         return [
@@ -231,13 +232,13 @@ final class SectionTypeTest extends TestCase
                 false,
             ],
             [
-                42,
-                42,
+                'section1',
+                'section1',
                 false,
             ],
             [
-                [42, 43],
-                42,
+                ['section1', 'section2'],
+                'section1',
                 false,
             ],
             [
@@ -251,13 +252,13 @@ final class SectionTypeTest extends TestCase
                 true,
             ],
             [
-                42,
-                [42],
+                'section1',
+                ['section1'],
                 true,
             ],
             [
-                [42, 43],
-                [42, 43],
+                ['section1', 'section2'],
+                ['section1', 'section2'],
                 true,
             ],
         ];
@@ -270,15 +271,15 @@ final class SectionTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing if the value is empty.
+     * @return iterable<mixed>
      */
     public static function emptyDataProvider(): iterable
     {
         return [
             [null, true],
             [[], true],
-            [42, false],
-            [[42], false],
+            ['section1', false],
+            [['section1'], false],
             [0, false],
             ['42', false],
             ['', false],

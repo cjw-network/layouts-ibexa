@@ -10,50 +10,50 @@ use Ibexa\Core\Repository\Repository;
 use Ibexa\Core\Repository\Values\Content\Location as IbexaLocation;
 use Netgen\Layouts\Ibexa\ContentProvider\ContentExtractorInterface;
 use Netgen\Layouts\Ibexa\Layout\Resolver\TargetType\Location;
-use Netgen\Layouts\Ibexa\Tests\Validator\RepositoryValidatorFactory;
+use Netgen\Layouts\Ibexa\Tests\TestCase\ValidatorTestCaseTrait;
 use Netgen\Layouts\Ibexa\Utils\RemoteIdConverter;
 use Netgen\Layouts\Layout\Resolver\ValueObjectProviderInterface;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Validator\Validation;
 
 #[CoversClass(Location::class)]
 final class LocationTest extends TestCase
 {
-    private MockObject&Repository $repositoryMock;
+    use ValidatorTestCaseTrait;
 
-    private MockObject&LocationService $locationServiceMock;
+    private Stub&Repository $repositoryStub;
 
-    private MockObject&ContentExtractorInterface $contentExtractorMock;
+    private Stub&LocationService $locationServiceStub;
 
-    private MockObject&ValueObjectProviderInterface $valueObjectProviderMock;
+    private Stub&ContentExtractorInterface $contentExtractorStub;
+
+    private Stub&ValueObjectProviderInterface $valueObjectProviderStub;
 
     private Location $targetType;
 
     protected function setUp(): void
     {
-        $this->contentExtractorMock = $this->createMock(ContentExtractorInterface::class);
-        $this->valueObjectProviderMock = $this->createMock(ValueObjectProviderInterface::class);
-        $this->locationServiceMock = $this->createMock(LocationService::class);
-        $this->repositoryMock = $this->createPartialMock(Repository::class, ['sudo', 'getLocationService']);
+        $this->contentExtractorStub = self::createStub(ContentExtractorInterface::class);
+        $this->valueObjectProviderStub = self::createStub(ValueObjectProviderInterface::class);
+        $this->locationServiceStub = self::createStub(LocationService::class);
+        $this->repositoryStub = self::createStub(Repository::class);
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('sudo')
-            ->with(self::anything())
             ->willReturnCallback(
-                fn (callable $callback) => $callback($this->repositoryMock),
+                fn (callable $callback): mixed => $callback($this->repositoryStub),
             );
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('getLocationService')
-            ->willReturn($this->locationServiceMock);
+            ->willReturn($this->locationServiceStub);
 
         $this->targetType = new Location(
-            $this->contentExtractorMock,
-            $this->valueObjectProviderMock,
-            new RemoteIdConverter($this->repositoryMock),
+            $this->contentExtractorStub,
+            $this->valueObjectProviderStub,
+            new RemoteIdConverter($this->repositoryStub),
         );
     }
 
@@ -64,15 +64,11 @@ final class LocationTest extends TestCase
 
     public function testValidation(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocation')
-            ->with(self::identicalTo(42))
             ->willReturn(new IbexaLocation());
 
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new RepositoryValidatorFactory($this->repositoryMock))
-            ->getValidator();
+        $validator = $this->createValidator($this->repositoryStub);
 
         $errors = $validator->validate(42, $this->targetType->getConstraints());
         self::assertCount(0, $errors);
@@ -80,15 +76,11 @@ final class LocationTest extends TestCase
 
     public function testValidationWithInvalidValue(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocation')
-            ->with(self::identicalTo(42))
             ->willThrowException(new NotFoundException('location', 42));
 
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new RepositoryValidatorFactory($this->repositoryMock))
-            ->getValidator();
+        $validator = $this->createValidator($this->repositoryStub);
 
         $errors = $validator->validate(42, $this->targetType->getConstraints());
         self::assertCount(0, $errors);
@@ -104,9 +96,8 @@ final class LocationTest extends TestCase
 
         $request = Request::create('/');
 
-        $this->contentExtractorMock
+        $this->contentExtractorStub
             ->method('extractLocation')
-            ->with(self::identicalTo($request))
             ->willReturn($location);
 
         self::assertSame(42, $this->targetType->provideValue($request));
@@ -116,9 +107,8 @@ final class LocationTest extends TestCase
     {
         $request = Request::create('/');
 
-        $this->contentExtractorMock
+        $this->contentExtractorStub
             ->method('extractLocation')
-            ->with(self::identicalTo($request))
             ->willReturn(null);
 
         self::assertNull($this->targetType->provideValue($request));
@@ -128,10 +118,8 @@ final class LocationTest extends TestCase
     {
         $location = new IbexaLocation();
 
-        $this->valueObjectProviderMock
-            ->expects(self::once())
+        $this->valueObjectProviderStub
             ->method('getValueObject')
-            ->with(self::identicalTo(42))
             ->willReturn($location);
 
         self::assertSame($location, $this->targetType->getValueObject(42));
@@ -139,10 +127,8 @@ final class LocationTest extends TestCase
 
     public function testExport(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocation')
-            ->with(self::identicalTo(42))
             ->willReturn(new IbexaLocation(['remoteId' => 'abc']));
 
         self::assertSame('abc', $this->targetType->export(42));
@@ -150,10 +136,8 @@ final class LocationTest extends TestCase
 
     public function testExportWithInvalidValue(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocation')
-            ->with(self::identicalTo(42))
             ->willThrowException(new NotFoundException('location', 42));
 
         self::assertNull($this->targetType->export(42));
@@ -161,10 +145,8 @@ final class LocationTest extends TestCase
 
     public function testImport(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocationByRemoteId')
-            ->with(self::identicalTo('abc'))
             ->willReturn(new IbexaLocation(['id' => 42]));
 
         self::assertSame(42, $this->targetType->import('abc'));
@@ -172,10 +154,8 @@ final class LocationTest extends TestCase
 
     public function testImportWithInvalidValue(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocationByRemoteId')
-            ->with(self::identicalTo('abc'))
             ->willThrowException(new NotFoundException('location', 'abc'));
 
         self::assertSame(0, $this->targetType->import('abc'));

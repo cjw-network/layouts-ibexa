@@ -20,22 +20,6 @@ trait ParentLocationTrait
     private LocationService $locationService;
 
     /**
-     * Sets the content provider used by the trait.
-     */
-    private function setContentProvider(ContentProviderInterface $contentProvider): void
-    {
-        $this->contentProvider = $contentProvider;
-    }
-
-    /**
-     * Sets the location service used by the trait.
-     */
-    private function setLocationService(LocationService $locationService): void
-    {
-        $this->locationService = $locationService;
-    }
-
-    /**
      * Builds the parameters for filtering by parent location.
      *
      * @param string[] $groups
@@ -74,7 +58,7 @@ trait ParentLocationTrait
      */
     private function getParentLocation(ParameterCollectionInterface $parameterCollection): ?Location
     {
-        if ($parameterCollection->getParameter('use_current_location')->getValue() === true) {
+        if ($parameterCollection->getParameter('use_current_location')->value === true) {
             return $this->contentProvider->provideLocation();
         }
         elseif ( $parameterCollection->getParameter('use_parent_location')->getValue() === true )
@@ -88,7 +72,7 @@ trait ParentLocationTrait
 
         }
 
-        $parentLocationId = $parameterCollection->getParameter('parent_location_id')->getValue();
+        $parentLocationId = $parameterCollection->getParameter('parent_location_id')->value;
         if ($parentLocationId === null) {
             return null;
         }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Netgen\Layouts\Ibexa\Tests\Parameters\Form\Mapper;
 
-use Netgen\ContentBrowser\Form\Type\ContentBrowserMultipleType;
+use Netgen\ContentBrowser\Form\Type\ContentBrowserMultipleIntegerType;
 use Netgen\Layouts\Ibexa\Parameters\Form\Mapper\TagsMapper;
 use Netgen\Layouts\Ibexa\Parameters\ParameterType\TagsType as ParameterType;
 use Netgen\Layouts\Parameters\ParameterDefinition;
@@ -24,7 +24,7 @@ final class TagsMapperTest extends TestCase
 
     public function testGetFormType(): void
     {
-        self::assertSame(ContentBrowserMultipleType::class, $this->mapper->getFormType());
+        self::assertSame(ContentBrowserMultipleIntegerType::class, $this->mapper->getFormType());
     }
 
     public function testMapOptions(): void
@@ -38,7 +38,7 @@ final class TagsMapperTest extends TestCase
             $this->mapper->mapOptions(
                 ParameterDefinition::fromArray(
                     [
-                        'type' => new ParameterType($this->createMock(TagsService::class)),
+                        'type' => new ParameterType(self::createStub(TagsService::class)),
                         'options' => [
                             'min' => 3,
                             'max' => 6,

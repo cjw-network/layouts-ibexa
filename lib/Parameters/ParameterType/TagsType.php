@@ -22,7 +22,9 @@ use function is_array;
  */
 final class TagsType extends ParameterType
 {
-    public function __construct(private TagsService $tagsService) {}
+    public function __construct(
+        private TagsService $tagsService,
+    ) {}
 
     public static function getIdentifier(): string
     {
@@ -31,50 +33,53 @@ final class TagsType extends ParameterType
 
     public function configureOptions(OptionsResolver $optionsResolver): void
     {
-        $optionsResolver->setDefault('min', null);
-        $optionsResolver->setDefault('max', null);
-        $optionsResolver->setDefault('allow_invalid', false);
+        $optionsResolver
+            ->define('min')
+            ->required()
+            ->default(null)
+            ->allowedTypes('int', 'null')
+            ->allowedValues(static fn (?int $value): bool => $value === null || $value > 0)
+            ->info('It must be a positive integer or null.');
 
-        $optionsResolver->setRequired(['min', 'max', 'allow_invalid']);
+        $optionsResolver
+            ->define('max')
+            ->required()
+            ->default(null)
+            ->allowedTypes('int', 'null')
+            ->allowedValues(static fn (?int $value): bool => $value === null || $value > 0)
+            ->normalize(
+                static fn (Options $options, ?int $value): ?int => match (true) {
+                    $value === null || $options['min'] === null => $value,
+                    $value < $options['min'] => $options['min'],
+                    default => $value,
+                },
+            )->info('It must be a positive integer or null.');
 
-        $optionsResolver->setAllowedTypes('min', ['int', 'null']);
-        $optionsResolver->setAllowedTypes('max', ['int', 'null']);
-        $optionsResolver->setAllowedTypes('allow_invalid', 'bool');
-
-        $optionsResolver->setAllowedValues(
-            'min',
-            static fn (?int $value): bool => $value === null || $value > 0,
-        );
-
-        $optionsResolver->setAllowedValues(
-            'max',
-            static fn (?int $value): bool => $value === null || $value > 0,
-        );
-
-        $optionsResolver->setNormalizer(
-            'max',
-            static fn (Options $options, ?int $value): ?int => match (true) {
-                $value === null || $options['min'] === null => $value,
-                $value < $options['min'] => $options['min'],
-                default => $value,
-            },
-        );
+        $optionsResolver
+            ->define('allow_invalid')
+            ->required()
+            ->default(false)
+            ->allowedTypes('bool');
     }
 
-    public function fromHash(ParameterDefinition $parameterDefinition, mixed $value)
+    /**
+     * @return int[]|int|null
+     */
+    public function fromHash(ParameterDefinition $parameterDefinition, mixed $value): array|int|null
     {
-        return is_array($value) ? array_map('intval', $value) : $value;
+        if ($value === null) {
+            return null;
+        }
+
+        return is_array($value) ? array_map(intval(...), $value) : (int) $value;
     }
 
     public function export(ParameterDefinition $parameterDefinition, mixed $value): ?string
     {
         try {
-            /** @var \Netgen\TagsBundle\API\Repository\Values\Tags\Tag $tag */
-            $tag = $this->tagsService->sudo(
-                fn (): Tag => $this->tagsService->loadTag((int) $value),
-            );
-
-            return $tag->remoteId;
+            return $this->tagsService->sudo(
+                static fn (TagsService $tagsService): Tag => $tagsService->loadTag((int) $value),
+            )->remoteId;
         } catch (NotFoundException) {
             return null;
         }
@@ -83,12 +88,9 @@ final class TagsType extends ParameterType
     public function import(ParameterDefinition $parameterDefinition, mixed $value): ?int
     {
         try {
-            /** @var \Netgen\TagsBundle\API\Repository\Values\Tags\Tag $tag */
-            $tag = $this->tagsService->sudo(
-                fn (): Tag => $this->tagsService->loadTagByRemoteId((string) $value),
-            );
-
-            return $tag->id;
+            return $this->tagsService->sudo(
+                static fn (TagsService $tagsService): Tag => $tagsService->loadTagByRemoteId((string) $value),
+            )->id;
         } catch (NotFoundException) {
             return null;
         }
@@ -96,28 +98,25 @@ final class TagsType extends ParameterType
 
     protected function getValueConstraints(ParameterDefinition $parameterDefinition, mixed $value): array
     {
-        $options = $parameterDefinition->getOptions();
+        $min = $parameterDefinition->getOption('min');
+        $max = $parameterDefinition->getOption('max');
 
         $constraints = [
-            new Constraints\Type(['type' => 'array']),
+            new Constraints\Type(type: 'array'),
             new Constraints\All(
-                [
-                    'constraints' => [
-                        new Constraints\NotBlank(),
-                        new Constraints\Type(['type' => 'numeric']),
-                        new Constraints\GreaterThan(['value' => 0]),
-                        new IbexaConstraints\Tag(['allowInvalid' => $options['allow_invalid']]),
-                    ],
+                constraints: [
+                    new Constraints\NotBlank(),
+                    new Constraints\Type(type: 'int'),
+                    new Constraints\Positive(),
+                    new IbexaConstraints\Tag(allowInvalid: $parameterDefinition->getOption('allow_invalid')),
                 ],
             ),
         ];
 
-        if ($options['min'] !== null || $options['max'] !== null) {
+        if ($min !== null || $max !== null) {
             $constraints[] = new Constraints\Count(
-                [
-                    'min' => $options['min'],
-                    'max' => $options['max'],
-                ],
+                min: $min,
+                max: $max,
             );
         }
 

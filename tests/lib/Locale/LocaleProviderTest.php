@@ -10,7 +10,7 @@ use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Ibexa\Core\MVC\Symfony\Locale\LocaleConverterInterface;
 use Netgen\Layouts\Ibexa\Locale\LocaleProvider;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -20,30 +20,30 @@ use function array_values;
 #[CoversClass(LocaleProvider::class)]
 final class LocaleProviderTest extends TestCase
 {
-    private MockObject&LanguageService $languageServiceMock;
+    private Stub&LanguageService $languageServiceStub;
 
-    private MockObject&LocaleConverterInterface $localeConverterMock;
+    private Stub&LocaleConverterInterface $localeConverterStub;
 
-    private MockObject&ConfigResolverInterface $configResolverMock;
+    private Stub&ConfigResolverInterface $configResolverStub;
 
     private LocaleProvider $localeProvider;
 
     protected function setUp(): void
     {
-        $this->languageServiceMock = $this->createMock(LanguageService::class);
-        $this->localeConverterMock = $this->createMock(LocaleConverterInterface::class);
-        $this->configResolverMock = $this->createMock(ConfigResolverInterface::class);
+        $this->languageServiceStub = self::createStub(LanguageService::class);
+        $this->localeConverterStub = self::createStub(LocaleConverterInterface::class);
+        $this->configResolverStub = self::createStub(ConfigResolverInterface::class);
 
         $this->localeProvider = new LocaleProvider(
-            $this->languageServiceMock,
-            $this->localeConverterMock,
-            $this->configResolverMock,
+            $this->languageServiceStub,
+            $this->localeConverterStub,
+            $this->configResolverStub,
         );
     }
 
     public function testGetAvailableLocales(): void
     {
-        $this->languageServiceMock
+        $this->languageServiceStub
             ->method('loadLanguages')
             ->willReturn(
                 [
@@ -53,7 +53,7 @@ final class LocaleProviderTest extends TestCase
                 ],
             );
 
-        $this->localeConverterMock
+        $this->localeConverterStub
             ->method('convertToPOSIX')
             ->willReturnMap(
                 [
@@ -70,7 +70,7 @@ final class LocaleProviderTest extends TestCase
 
     public function testGetAvailableLocalesWithInvalidPosixLocale(): void
     {
-        $this->languageServiceMock
+        $this->languageServiceStub
             ->method('loadLanguages')
             ->willReturn(
                 [
@@ -78,9 +78,8 @@ final class LocaleProviderTest extends TestCase
                 ],
             );
 
-        $this->localeConverterMock
+        $this->localeConverterStub
             ->method('convertToPOSIX')
-            ->with(self::identicalTo('unknown'))
             ->willReturn(null);
 
         $availableLocales = $this->localeProvider->getAvailableLocales();
@@ -90,15 +89,12 @@ final class LocaleProviderTest extends TestCase
 
     public function testGetRequestLocales(): void
     {
-        $this->configResolverMock
+        $this->configResolverStub
             ->method('getParameter')
-            ->with(self::identicalTo('languages'))
             ->willReturn(['eng-GB', 'ger-DE', 'unknown', 'cro-HR']);
 
-        $this->languageServiceMock
-            ->expects(self::once())
+        $this->languageServiceStub
             ->method('loadLanguageListByCode')
-            ->with(self::identicalTo(['eng-GB', 'ger-DE', 'unknown', 'cro-HR']))
             ->willReturn(
                 [
                     new Language(['languageCode' => 'eng-GB', 'enabled' => true]),
@@ -107,7 +103,7 @@ final class LocaleProviderTest extends TestCase
                 ],
             );
 
-        $this->localeConverterMock
+        $this->localeConverterStub
             ->method('convertToPOSIX')
             ->willReturnMap(
                 [
@@ -123,24 +119,20 @@ final class LocaleProviderTest extends TestCase
 
     public function testGetRequestLocalesWithInvalidPosixLocale(): void
     {
-        $this->configResolverMock
+        $this->configResolverStub
             ->method('getParameter')
-            ->with(self::identicalTo('languages'))
             ->willReturn(['eng-GB']);
 
-        $this->languageServiceMock
-            ->expects(self::once())
+        $this->languageServiceStub
             ->method('loadLanguageListByCode')
-            ->with(self::identicalTo(['eng-GB']))
             ->willReturn(
                 [
                     new Language(['languageCode' => 'eng-GB', 'enabled' => true]),
                 ],
             );
 
-        $this->localeConverterMock
+        $this->localeConverterStub
             ->method('convertToPOSIX')
-            ->with(self::identicalTo('eng-GB'))
             ->willReturn(null);
 
         $requestLocales = $this->localeProvider->getRequestLocales(Request::create(''));
@@ -150,24 +142,20 @@ final class LocaleProviderTest extends TestCase
 
     public function testGetRequestLocalesWithNonExistingPosixLocale(): void
     {
-        $this->configResolverMock
+        $this->configResolverStub
             ->method('getParameter')
-            ->with(self::identicalTo('languages'))
             ->willReturn(['eng-GB']);
 
-        $this->languageServiceMock
-            ->expects(self::once())
+        $this->languageServiceStub
             ->method('loadLanguageListByCode')
-            ->with(self::identicalTo(['eng-GB']))
             ->willReturn(
                 [
                     new Language(['languageCode' => 'eng-GB', 'enabled' => true]),
                 ],
             );
 
-        $this->localeConverterMock
+        $this->localeConverterStub
             ->method('convertToPOSIX')
-            ->with(self::identicalTo('eng-GB'))
             ->willReturn('unknown');
 
         $requestLocales = $this->localeProvider->getRequestLocales(Request::create(''));

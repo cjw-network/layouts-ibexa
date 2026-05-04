@@ -8,9 +8,7 @@ use Netgen\Layouts\Layout\Resolver\TargetType;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Validator\Constraints;
 
-use function is_string;
-
-class SemanticPathInfo extends TargetType
+final class SemanticPathInfo extends TargetType
 {
     public static function getType(): string
     {
@@ -21,7 +19,7 @@ class SemanticPathInfo extends TargetType
     {
         return [
             new Constraints\NotBlank(),
-            new Constraints\Type(['type' => 'string']),
+            new Constraints\Type(type: 'string'),
         ];
     }
 
@@ -33,8 +31,8 @@ class SemanticPathInfo extends TargetType
 
         // Semantic path info can in some cases be false (for example, on homepage
         // of a secondary siteaccess: i.e. /cro)
-        $semanticPathInfo = $request->attributes->get('semanticPathinfo');
-        if (!is_string($semanticPathInfo) || $semanticPathInfo === '') {
+        $semanticPathInfo = $request->attributes->getString('semanticPathinfo');
+        if ($semanticPathInfo === '') {
             $semanticPathInfo = '/';
         }
 

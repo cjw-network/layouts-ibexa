@@ -7,33 +7,33 @@ namespace Netgen\Bundle\LayoutsIbexaBundle\Controller\Admin;
 use Netgen\Layouts\API\Service\LayoutResolverService;
 use Netgen\Layouts\API\Service\LayoutService;
 use Netgen\Layouts\API\Values\LayoutResolver\Rule;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 final class DeleteRule extends Controller
 {
-    public function __construct(private LayoutService $layoutService, private LayoutResolverService $layoutResolverService) {}
+    public function __construct(
+        private LayoutService $layoutService,
+        private LayoutResolverService $layoutResolverService,
+    ) {}
 
     /**
      * Deletes the provided rule.
      */
-    public function __invoke(Rule $rule, Request $request): Response
+    public function __invoke(Rule $rule): Response
     {
         if (!$this->isGranted('ROLE_NGLAYOUTS_ADMIN')) {
             $this->denyAccessUnlessGranted(
                 'nglayouts:mapping:delete',
-                ['ruleGroup', $rule->getRuleGroupId()->toString()],
+                ['ruleGroup', $rule->ruleGroupId->toString()],
             );
         }
 
-        $layout = $rule->getLayout();
-
         if (
-            $layout !== null
-            && $this->layoutResolverService->getRuleCountForLayout($layout) === 1
+            $rule->layout !== null
+            && $this->layoutResolverService->getRuleCountForLayout($rule->layout) === 1
             && ($this->isGranted('ROLE_NGLAYOUTS_ADMIN') || $this->isGranted('nglayouts:layout:delete'))
         ) {
-            $this->layoutService->deleteLayout($layout);
+            $this->layoutService->deleteLayout($rule->layout);
         }
 
         $this->layoutResolverService->deleteRule($rule);

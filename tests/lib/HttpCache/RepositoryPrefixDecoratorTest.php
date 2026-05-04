@@ -9,6 +9,7 @@ use Netgen\Layouts\HttpCache\ClientInterface;
 use Netgen\Layouts\Ibexa\HttpCache\RepositoryPrefixDecorator;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(RepositoryPrefixDecorator::class)]
@@ -16,30 +17,29 @@ final class RepositoryPrefixDecoratorTest extends TestCase
 {
     private MockObject&ClientInterface $clientMock;
 
-    private MockObject&RepositoryTagPrefix $repositoryTagPrefixMock;
+    private Stub&RepositoryTagPrefix $repositoryTagPrefixStub;
 
     private RepositoryPrefixDecorator $repositoryPrefixDecorator;
 
     protected function setUp(): void
     {
         $this->clientMock = $this->createMock(ClientInterface::class);
-        $this->repositoryTagPrefixMock = $this->createMock(RepositoryTagPrefix::class);
+        $this->repositoryTagPrefixStub = self::createStub(RepositoryTagPrefix::class);
 
         $this->repositoryPrefixDecorator = new RepositoryPrefixDecorator(
             $this->clientMock,
-            $this->repositoryTagPrefixMock,
+            $this->repositoryTagPrefixStub,
         );
     }
 
     public function testPurge(): void
     {
-        $this->repositoryTagPrefixMock
-            ->expects(self::once())
+        $this->repositoryTagPrefixStub
             ->method('getRepositoryPrefix')
             ->willReturn('prefix_');
 
         $this->clientMock
-            ->expects(self::once())
+            ->expects($this->once())
             ->method('purge')
             ->with(self::identicalTo(['prefix_tag-1', 'prefix_tag-2']));
 
@@ -49,7 +49,7 @@ final class RepositoryPrefixDecoratorTest extends TestCase
     public function testCommit(): void
     {
         $this->clientMock
-            ->expects(self::once())
+            ->expects($this->once())
             ->method('commit')
             ->willReturn(true);
 

@@ -6,29 +6,35 @@ namespace Netgen\Layouts\Ibexa\Tests\Parameters\ParameterType;
 
 use Ibexa\Core\Base\Exceptions\NotFoundException;
 use Netgen\Layouts\Ibexa\Parameters\ParameterType\TagsType;
-use Netgen\Layouts\Ibexa\Tests\Validator\TagsServiceValidatorFactory;
+use Netgen\Layouts\Ibexa\Tests\TestCase\ValidatorTestCaseTrait;
 use Netgen\Layouts\Tests\Parameters\ParameterType\ParameterTypeTestTrait;
 use Netgen\TagsBundle\API\Repository\Values\Tags\Tag;
 use Netgen\TagsBundle\Core\Repository\TagsService;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\OptionsResolver\Exception\InvalidArgumentException;
-use Symfony\Component\Validator\Validation;
 
 #[CoversClass(TagsType::class)]
 final class TagsTypeTest extends TestCase
 {
     use ParameterTypeTestTrait;
+    use ValidatorTestCaseTrait;
 
-    private MockObject&TagsService $tagsServiceMock;
+    private Stub&TagsService $tagsServiceStub;
 
     protected function setUp(): void
     {
-        $this->tagsServiceMock = $this->createPartialMock(TagsService::class, ['loadTag', 'loadTagByRemoteId']);
+        $this->tagsServiceStub = self::createStub(TagsService::class);
 
-        $this->type = new TagsType($this->tagsServiceMock);
+        $this->tagsServiceStub
+            ->method('sudo')
+            ->willReturnCallback(
+                fn (callable $callback): mixed => $callback($this->tagsServiceStub),
+            );
+
+        $this->type = new TagsType($this->tagsServiceStub);
     }
 
     public function testGetIdentifier(): void
@@ -43,8 +49,8 @@ final class TagsTypeTest extends TestCase
     #[DataProvider('validOptionsDataProvider')]
     public function testValidOptions(array $options, array $resolvedOptions): void
     {
-        $parameter = $this->getParameterDefinition($options);
-        self::assertSame($resolvedOptions, $parameter->getOptions());
+        $parameterDefinition = $this->getParameterDefinition($options);
+        self::assertSame($resolvedOptions, $parameterDefinition->options);
     }
 
     /**
@@ -59,14 +65,13 @@ final class TagsTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing valid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function validOptionsDataProvider(): iterable
     {
         return [
             [
-                [
-                ],
+                [],
                 [
                     'min' => null,
                     'max' => null,
@@ -160,7 +165,7 @@ final class TagsTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing invalid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function invalidOptionsDataProvider(): iterable
     {
@@ -169,33 +174,53 @@ final class TagsTypeTest extends TestCase
                 [
                     'min' => '0',
                 ],
+            ],
+            [
                 [
                     'min' => -5,
                 ],
+            ],
+            [
                 [
                     'min' => 0,
                 ],
+            ],
+            [
                 [
                     'max' => '0',
                 ],
+            ],
+            [
                 [
                     'max' => -5,
                 ],
+            ],
+            [
                 [
                     'max' => 0,
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 'false',
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 'true',
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 0,
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 1,
                 ],
+            ],
+            [
                 [
                     'undefined_value' => 'Value',
                 ],
@@ -215,6 +240,9 @@ final class TagsTypeTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function fromHashDataProvider(): iterable
     {
         return [
@@ -231,10 +259,8 @@ final class TagsTypeTest extends TestCase
 
     public function testExport(): void
     {
-        $this->tagsServiceMock
-            ->expects(self::once())
+        $this->tagsServiceStub
             ->method('loadTag')
-            ->with(self::identicalTo(42))
             ->willReturn(new Tag(['remoteId' => 'abc']));
 
         self::assertSame('abc', $this->type->export($this->getParameterDefinition(), 42));
@@ -242,10 +268,8 @@ final class TagsTypeTest extends TestCase
 
     public function testExportWithNonExistingTag(): void
     {
-        $this->tagsServiceMock
-            ->expects(self::once())
+        $this->tagsServiceStub
             ->method('loadTag')
-            ->with(self::identicalTo(42))
             ->willThrowException(new NotFoundException('tag', 42));
 
         self::assertNull($this->type->export($this->getParameterDefinition(), 42));
@@ -253,10 +277,8 @@ final class TagsTypeTest extends TestCase
 
     public function testImport(): void
     {
-        $this->tagsServiceMock
-            ->expects(self::once())
+        $this->tagsServiceStub
             ->method('loadTagByRemoteId')
-            ->with(self::identicalTo('abc'))
             ->willReturn(new Tag(['id' => 42]));
 
         self::assertSame(42, $this->type->import($this->getParameterDefinition(), 'abc'));
@@ -264,10 +286,8 @@ final class TagsTypeTest extends TestCase
 
     public function testImportWithNonExistingTag(): void
     {
-        $this->tagsServiceMock
-            ->expects(self::once())
+        $this->tagsServiceStub
             ->method('loadTagByRemoteId')
-            ->with(self::identicalTo('abc'))
             ->willThrowException(new NotFoundException('tag', 'abc'));
 
         self::assertNull($this->type->import($this->getParameterDefinition(), 'abc'));
@@ -277,7 +297,7 @@ final class TagsTypeTest extends TestCase
     public function testValidation(mixed $values, bool $required, bool $isValid): void
     {
         if ($values !== null) {
-            $this->tagsServiceMock
+            $this->tagsServiceStub
                 ->method('loadTag')
                 ->willReturnCallback(
                     static fn (int $id): Tag => match (true) {
@@ -287,15 +307,17 @@ final class TagsTypeTest extends TestCase
                 );
         }
 
-        $parameter = $this->getParameterDefinition(['min' => 1, 'max' => 3], $required);
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new TagsServiceValidatorFactory($this->tagsServiceMock))
-            ->getValidator();
+        $validator = $this->createValidator(null, $this->tagsServiceStub);
 
-        $errors = $validator->validate($values, $this->type->getConstraints($parameter, $values));
+        $parameterDefinition = $this->getParameterDefinition(['min' => 1, 'max' => 3], $required);
+
+        $errors = $validator->validate($values, $this->type->getConstraints($parameterDefinition, $values));
         self::assertSame($isValid, $errors->count() === 0);
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function validationDataProvider(): iterable
     {
         return [

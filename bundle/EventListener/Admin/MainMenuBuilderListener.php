@@ -6,6 +6,7 @@ namespace Netgen\Bundle\LayoutsIbexaBundle\EventListener\Admin;
 
 use Ibexa\AdminUi\Menu\Event\ConfigureMenuEvent;
 use Ibexa\AdminUi\Menu\MainMenuBuilder;
+use Ibexa\Contracts\Core\SiteAccess\ConfigResolverInterface;
 use Knp\Menu\ItemInterface;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
@@ -17,7 +18,10 @@ use function is_int;
 
 final class MainMenuBuilderListener implements EventSubscriberInterface
 {
-    public function __construct(private AuthorizationCheckerInterface $authorizationChecker) {}
+    public function __construct(
+        private AuthorizationCheckerInterface $authorizationChecker,
+        private ConfigResolverInterface $configResolver,
+    ) {}
 
     public static function getSubscribedEvents(): array
     {
@@ -72,6 +76,13 @@ final class MainMenuBuilderListener implements EventSubscriberInterface
             ->addChild('transfer', ['route' => 'nglayouts_admin_transfer_index'])
             ->setLabel('menu.main_menu.transfer')
             ->setExtra('translation_domain', 'nglayouts_admin');
+
+        if ($this->configResolver->hasParameter('ibexa_component.parent_locations', 'netgen_layouts')) {
+            $layouts
+                ->addChild('components', ['route' => 'nglayouts_admin_ibexa_components_index'])
+                ->setLabel('menu.main_menu.ibexa.components')
+                ->setExtra('translation_domain', 'nglayouts_admin');
+        }
 
         $menu->reorderChildren($menuOrder);
     }

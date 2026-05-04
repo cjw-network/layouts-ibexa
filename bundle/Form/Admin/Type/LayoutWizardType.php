@@ -8,24 +8,20 @@ use Netgen\Layouts\API\Service\LayoutService;
 use Netgen\Layouts\API\Values\Layout\Layout;
 use Netgen\Layouts\Layout\Registry\LayoutTypeRegistry;
 use Netgen\Layouts\Validator\Constraint\LayoutName;
-use Ramsey\Uuid\Uuid;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
 use Symfony\Component\OptionsResolver\OptionsResolver;
+use Symfony\Component\Uid\NilUuid;
 use Symfony\Component\Validator\Constraints;
 
-use function array_key_first;
-use function count;
+use function array_first;
+use function sprintf;
 
 final class LayoutWizardType extends AbstractType
 {
-    public const ACTION_TYPE_NEW_LAYOUT = 'new_layout';
-
-    public const ACTION_TYPE_COPY_LAYOUT = 'copy_layout';
-
     public function __construct(
         private LayoutService $layoutService,
         private LayoutTypeRegistry $layoutTypeRegistry,
@@ -34,13 +30,13 @@ final class LayoutWizardType extends AbstractType
 
     public function configureOptions(OptionsResolver $resolver): void
     {
-        $resolver->setDefaults(
-            [
-                'translation_domain' => 'nglayouts_ibexa_admin_forms',
-                'validation_groups' => static fn (FormInterface $form): array => [
-                    'Default',
-                    $form->get('action')->getData(),
-                ],
+        $resolver->setDefault('translation_domain', 'nglayouts_ibexa_admin_forms');
+
+        $resolver->setDefault(
+            'validation_groups',
+            static fn (FormInterface $form): array => [
+                'Default',
+                $form->get('action')->getData()->value,
             ],
         );
     }
@@ -51,15 +47,16 @@ final class LayoutWizardType extends AbstractType
 
         $builder->add(
             'action',
-            Type\ChoiceType::class,
+            Type\EnumType::class,
             [
+                'class' => ActionType::class,
                 'label' => false,
                 'expanded' => true,
-                'data' => self::ACTION_TYPE_NEW_LAYOUT,
-                'choices' => [
-                    'layout_wizard.action.new_layout' => self::ACTION_TYPE_NEW_LAYOUT,
-                    'layout_wizard.action.copy_layout' => self::ACTION_TYPE_COPY_LAYOUT,
-                ],
+                'data' => ActionType::NewLayout,
+                'choice_label' => static fn (ActionType $actionType): string => sprintf(
+                    'layout_wizard.action.%s',
+                    $actionType->value,
+                ),
             ],
         );
 
@@ -75,9 +72,9 @@ final class LayoutWizardType extends AbstractType
                 'choice_label' => 'name',
                 'choice_translation_domain' => false,
                 'expanded' => true,
-                'data' => count($layoutTypes) > 0 ? $layoutTypes[array_key_first($layoutTypes)] : null,
+                'data' => array_first($layoutTypes),
                 'constraints' => [
-                    new Constraints\NotBlank(['groups' => [self::ACTION_TYPE_NEW_LAYOUT]]),
+                    new Constraints\NotBlank(groups: [ActionType::NewLayout->value]),
                 ],
             ],
         );
@@ -88,7 +85,7 @@ final class LayoutWizardType extends AbstractType
             [
                 'label' => 'layout_wizard.layout',
                 'choices' => $this->layoutService->loadAllLayouts()->filter(
-                    static fn (Layout $layout): bool => !$layout->isShared(),
+                    static fn (Layout $layout): bool => !$layout->isShared,
                 ),
                 'choice_value' => 'id',
                 'choice_label' => 'name',
@@ -115,7 +112,7 @@ final class LayoutWizardType extends AbstractType
                 'required' => false,
                 'constraints' => [
                     new Constraints\NotNull(),
-                    new Constraints\Type(['type' => 'string']),
+                    new Constraints\Type(type: 'string'),
                 ],
                 'empty_data' => '',
             ],
@@ -131,8 +128,8 @@ final class LayoutWizardType extends AbstractType
                     'constraints' => [
                         new Constraints\NotBlank(),
                         new Constraints\AtLeastOneOf(
-                            [
-                                new Constraints\EqualTo(Uuid::NIL),
+                            constraints: [
+                                new Constraints\EqualTo(new NilUuid()->toString()),
                                 new Constraints\Uuid(),
                             ],
                         ),
@@ -149,7 +146,7 @@ final class LayoutWizardType extends AbstractType
                 'data' => true,
                 'constraints' => [
                     new Constraints\NotNull(),
-                    new Constraints\Type(['type' => 'bool']),
+                    new Constraints\Type(type: 'bool'),
                 ],
             ],
         );
@@ -158,7 +155,7 @@ final class LayoutWizardType extends AbstractType
     public function finishView(FormView $view, FormInterface $form, array $options): void
     {
         foreach ($this->layoutTypeRegistry->getLayoutTypes(true) as $layoutType) {
-            $formView = $view['layout_type'][$layoutType->getIdentifier()] ?? null;
+            $formView = $view['layout_type'][$layoutType->identifier] ?? null;
 
             if ($formView instanceof FormView) {
                 $formView->vars['layout_type'] = $layoutType;

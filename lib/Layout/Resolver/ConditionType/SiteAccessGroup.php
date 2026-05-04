@@ -19,7 +19,9 @@ final class SiteAccessGroup extends ConditionType
     /**
      * @param array<string, string[]> $groupsBySiteAccess
      */
-    public function __construct(private array $groupsBySiteAccess) {}
+    public function __construct(
+        private array $groupsBySiteAccess,
+    ) {}
 
     public static function getType(): string
     {
@@ -30,19 +32,17 @@ final class SiteAccessGroup extends ConditionType
     {
         return [
             new Constraints\NotBlank(),
-            new Constraints\Type(['type' => 'array']),
+            new Constraints\Type(type: 'array'),
             new Constraints\All(
-                [
-                    'constraints' => [
-                        new Constraints\Type(['type' => 'string']),
-                        new IbexaConstraints\SiteAccessGroup(),
-                    ],
+                constraints: [
+                    new Constraints\Type(type: 'string'),
+                    new IbexaConstraints\SiteAccessGroup(),
                 ],
             ),
         ];
     }
 
-    public function matches(Request $request, mixed $value): bool
+    public function matches(Request $request, int|string|array $value): bool
     {
         $siteAccess = $request->attributes->get('siteaccess');
         if (!$siteAccess instanceof IbexaSiteAccess) {

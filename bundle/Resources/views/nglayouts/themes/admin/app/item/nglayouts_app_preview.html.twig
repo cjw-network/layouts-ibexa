@@ -3,14 +3,14 @@
 
     {% if image_alias %}
         <div class="image">
-            <img src="{{ asset(image_alias.uri) }}" />
+            <img src="{{ asset(image_alias.uri) }}" alt="{{ content.field('image').value.alternativeText }}" />
         </div>
     {% endif %}
 {% endif %}
 
 <div class="name">
     {% if nglayouts_item is defined %}
-        <p><a href="{{ nglayouts_item_path(nglayouts_item, 'admin') }}" target="_blank" rel="noopener noreferrer">{{ content.name }}</a></p>
+        <p><a href="{{ nglayouts_item_admin_path(nglayouts_item) }}" target="_blank" rel="noopener noreferrer">{{ content.name }}</a></p>
     {% else %}
         <p><a href="{{ ibexa_path(content) }}" target="_blank" rel="noopener noreferrer">{{ content.name }}</a></p>
     {% endif %}

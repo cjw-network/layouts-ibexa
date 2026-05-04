@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Netgen\Bundle\LayoutsIbexaBundle\Controller\Admin;
 
 use Ibexa\Contracts\Core\Repository\Values\Content\Location;
+use Netgen\Bundle\LayoutsIbexaBundle\Form\Admin\Type\ActionType;
 use Netgen\Bundle\LayoutsIbexaBundle\Form\Admin\Type\LayoutWizardType;
 use Netgen\Layouts\API\Service\LayoutService;
 use Netgen\Layouts\API\Values\Layout\Layout;
@@ -21,7 +22,10 @@ use function sprintf;
 
 final class LayoutWizard extends Controller
 {
-    public function __construct(private LayoutService $layoutService, private LayoutTypeRegistry $layoutTypeRegistry) {}
+    public function __construct(
+        private LayoutService $layoutService,
+        private LayoutTypeRegistry $layoutTypeRegistry,
+    ) {}
 
     /**
      * Renders a 1:1 wizard used to create layout+mapping combination on-the-fly.
@@ -44,12 +48,12 @@ final class LayoutWizard extends Controller
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
-            $layout = $form->get('action')->getData() === LayoutWizardType::ACTION_TYPE_NEW_LAYOUT ?
+            $layout = $form->get('action')->getData() === ActionType::NewLayout ?
                 $this->createNewLayout($form, $request->getLocale()) :
                 $this->copyLayout($form, $form->get('layout')->getData());
 
             $wizardData = [
-                'layout' => $layout->getId()->toString(),
+                'layout' => $layout->id->toString(),
                 'activate_rule' => $form->get('activate_rule')->getData(),
             ];
 
@@ -72,7 +76,7 @@ final class LayoutWizard extends Controller
             $layoutUrl = $this->generateUrl(
                 'nglayouts_app',
                 [
-                    '_fragment' => 'layout/' . $layout->getId()->toString(),
+                    '_fragment' => 'layout/' . $layout->id->toString(),
                 ],
                 UrlGeneratorInterface::ABSOLUTE_URL,
             );
@@ -89,7 +93,7 @@ final class LayoutWizard extends Controller
             '@ibexadesign/content/tab/nglayouts/layout_wizard.html.twig',
             [
                 'location' => $location,
-                'form' => $form->createView(),
+                'form' => $form,
             ],
             new Response(
                 null,
@@ -119,7 +123,7 @@ final class LayoutWizard extends Controller
     private function createNewLayout(FormInterface $form, string $locale): Layout
     {
         $createStruct = $this->layoutService->newLayoutCreateStruct(
-            $this->layoutTypeRegistry->getLayoutType($form->get('layout_type')->getData()->getIdentifier()),
+            $this->layoutTypeRegistry->getLayoutType($form->get('layout_type')->getData()->identifier),
             $form->get('layout_name')->getData(),
             $locale,
         );

@@ -9,22 +9,22 @@ on:
 
 jobs:
   tests:
-    name: ${{ matrix.php }} / ${{ matrix.symfony }}
+    name: ${{ matrix.php }} / ${{ matrix.symfony }}${{ matrix.deps == 'lowest' && ' / lowest' || '' }}
     runs-on: ubuntu-latest
 
     strategy:
       fail-fast: false
       matrix:
-        php: ['8.1']
-        symfony: ['~5.4.0']
-        deps: ['normal']
+        php: ['8.4', '8.5']
+        symfony: ['~7.4.0']
+        deps: ['highest']
         include:
-          - php: '8.1'
-            symfony: '~5.4.0'
-            deps: 'low'
+          - php: '8.4'
+            symfony: '~7.4.0'
+            deps: 'lowest'
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -40,12 +40,10 @@ jobs:
 
       - run: composer config extra.symfony.require ${{ matrix.symfony }}
 
-      -
-        run: composer update --prefer-dist
-        if: ${{ matrix.deps != 'low' }}
+      - uses: ramsey/composer-install@v3
+        with:
+          dependency-versions: ${{ matrix.deps }}
+          composer-options: '--prefer-dist'
+          ignore-cache: 'yes'
 
-      -
-        run: composer update --prefer-dist --prefer-lowest --prefer-stable
-        if: ${{ matrix.deps == 'low' }}
-
-      - run: vendor/bin/phpunit -c phpunit.xml --colors=always
+      - run: composer test

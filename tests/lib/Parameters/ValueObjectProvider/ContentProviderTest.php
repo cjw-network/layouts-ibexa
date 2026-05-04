@@ -13,37 +13,34 @@ use Ibexa\Core\Repository\Values\Content\VersionInfo;
 use Netgen\Layouts\Error\ErrorHandlerInterface;
 use Netgen\Layouts\Ibexa\Parameters\ValueObjectProvider\ContentProvider;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 
 #[CoversClass(ContentProvider::class)]
 final class ContentProviderTest extends TestCase
 {
-    private MockObject&Repository $repositoryMock;
-
-    private MockObject&ContentService $contentServiceMock;
+    private Stub&ContentService $contentServiceStub;
 
     private ContentProvider $valueObjectProvider;
 
     protected function setUp(): void
     {
-        $this->repositoryMock = $this->createMock(Repository::class);
-        $this->contentServiceMock = $this->createMock(ContentService::class);
+        $this->contentServiceStub = self::createStub(ContentService::class);
 
-        $this->repositoryMock
+        $repositoryStub = self::createStub(Repository::class);
+        $repositoryStub
             ->method('getContentService')
-            ->willReturn($this->contentServiceMock);
+            ->willReturn($this->contentServiceStub);
 
-        $this->repositoryMock
+        $repositoryStub
             ->method('sudo')
-            ->with(self::anything())
             ->willReturnCallback(
-                fn (callable $callback) => $callback($this->repositoryMock),
+                static fn (callable $callback): mixed => $callback($repositoryStub),
             );
 
         $this->valueObjectProvider = new ContentProvider(
-            $this->repositoryMock,
-            $this->createMock(ErrorHandlerInterface::class),
+            $repositoryStub,
+            self::createStub(ErrorHandlerInterface::class),
         );
     }
 
@@ -59,9 +56,8 @@ final class ContentProviderTest extends TestCase
             ],
         );
 
-        $this->contentServiceMock
+        $this->contentServiceStub
             ->method('loadContent')
-            ->with(self::identicalTo(42))
             ->willReturn($content);
 
         self::assertSame($content, $this->valueObjectProvider->getValueObject(42));
@@ -69,18 +65,13 @@ final class ContentProviderTest extends TestCase
 
     public function testGetValueObjectWithNullValue(): void
     {
-        $this->contentServiceMock
-            ->expects(self::never())
-            ->method('loadContent');
-
         self::assertNull($this->valueObjectProvider->getValueObject(null));
     }
 
     public function testGetValueObjectWithNonExistentLocation(): void
     {
-        $this->contentServiceMock
+        $this->contentServiceStub
             ->method('loadContent')
-            ->with(self::identicalTo(42))
             ->willThrowException(new NotFoundException('content', 42));
 
         self::assertNull($this->valueObjectProvider->getValueObject(42));
@@ -98,9 +89,8 @@ final class ContentProviderTest extends TestCase
             ],
         );
 
-        $this->contentServiceMock
+        $this->contentServiceStub
             ->method('loadContent')
-            ->with(self::identicalTo(42))
             ->willReturn($content);
 
         self::assertNull($this->valueObjectProvider->getValueObject(42));

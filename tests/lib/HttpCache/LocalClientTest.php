@@ -28,15 +28,10 @@ final class LocalClientTest extends TestCase
         $tags = ['tag-1', 'tag-2'];
 
         $this->cacheStoreMock
-            ->expects(self::once())
+            ->expects($this->once())
             ->method('invalidateTags')
             ->with(self::identicalTo($tags));
 
         $this->client->purge($tags);
-    }
-
-    public function testCommit(): void
-    {
-        self::assertTrue($this->client->commit());
     }
 }

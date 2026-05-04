@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Netgen\Layouts\Ibexa\Collection\QueryType\Handler\Traits;
 
 use Ibexa\Contracts\Core\Repository\Values\Content\Query\Criterion;
+use Ibexa\Contracts\Core\Repository\Values\Content\Query\CriterionInterface;
 use Netgen\Layouts\Ibexa\Parameters\ParameterType as IbexaParameterType;
 use Netgen\Layouts\Parameters\ParameterBuilderInterface;
 use Netgen\Layouts\Parameters\ParameterCollectionInterface;
@@ -55,20 +56,20 @@ trait ContentTypeFilterTrait
     /**
      * Returns the criteria used to filter content by content type.
      */
-    private function getContentTypeFilterCriteria(ParameterCollectionInterface $parameterCollection): ?Criterion
+    private function getContentTypeFilterCriteria(ParameterCollectionInterface $parameterCollection): ?CriterionInterface
     {
-        if ($parameterCollection->getParameter('filter_by_content_type')->getValue() !== true) {
+        if ($parameterCollection->getParameter('filter_by_content_type')->value !== true) {
             return null;
         }
 
-        $contentTypes = $parameterCollection->getParameter('content_types')->getValue() ?? [];
+        $contentTypes = $parameterCollection->getParameter('content_types')->value ?? [];
         if (count($contentTypes) === 0) {
             return null;
         }
 
         $contentTypeFilter = new Criterion\ContentTypeIdentifier($contentTypes);
 
-        if ($parameterCollection->getParameter('content_types_filter')->getValue() === 'exclude') {
+        if ($parameterCollection->getParameter('content_types_filter')->value === 'exclude') {
             $contentTypeFilter = new Criterion\LogicalNot($contentTypeFilter);
         }
 

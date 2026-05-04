@@ -8,6 +8,7 @@ use Ibexa\Contracts\Core\Repository\ContentService;
 use Ibexa\Contracts\Core\Repository\Values\Content\Location;
 use Ibexa\Core\MVC\Symfony\View\ContentView;
 use Netgen\Layouts\API\Values\LayoutResolver\Rule;
+use Netgen\Layouts\Ibexa\AdminUI\ComponentLayoutsLoader;
 use Netgen\Layouts\Ibexa\AdminUI\RelatedLayoutsLoader;
 use Netgen\Layouts\Layout\Resolver\LayoutResolverInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -19,6 +20,7 @@ final class LocationLayouts extends Controller
         private ContentService $contentService,
         private LayoutResolverInterface $layoutResolver,
         private RelatedLayoutsLoader $relatedLayoutsLoader,
+        private ComponentLayoutsLoader $componentLayoutsLoader,
     ) {}
 
     /**
@@ -32,7 +34,7 @@ final class LocationLayouts extends Controller
         $rulesOneOnOne = [];
 
         foreach ($rules as $rule) {
-            $rulesOneOnOne[$rule->getId()->toString()] = $this->isRuleOneOnOne($location, $rule);
+            $rulesOneOnOne[$rule->id->toString()] = $this->isRuleOneOnOne($location, $rule);
         }
 
         return $this->render(
@@ -41,6 +43,7 @@ final class LocationLayouts extends Controller
                 'rules' => $rules,
                 'rules_one_on_one' => $rulesOneOnOne,
                 'related_layouts' => $this->relatedLayoutsLoader->loadRelatedLayouts($location),
+                'component_layouts' => $this->componentLayoutsLoader->loadComponentLayouts($location->contentInfo),
                 'location' => $location,
             ],
         );
@@ -85,21 +88,21 @@ final class LocationLayouts extends Controller
      */
     private function isRuleOneOnOne(Location $location, Rule $rule): bool
     {
-        if ($rule->getTargets()->count() !== 1) {
+        if ($rule->targets->count() !== 1) {
             return false;
         }
 
         /** @var \Netgen\Layouts\API\Values\LayoutResolver\Target $target */
-        $target = $rule->getTargets()[0];
+        $target = $rule->targets[0];
 
-        if ($target->getTargetType()::getType() === 'ibexa_location') {
-            if ((int) $target->getValue() === (int) $location->id) {
+        if ($target->targetType::getType() === 'ibexa_location') {
+            if ((int) $target->value === $location->id) {
                 return true;
             }
         }
 
-        if ($target->getTargetType()::getType() === 'ibexa_content') {
-            if ((int) $target->getValue() === (int) $location->contentId) {
+        if ($target->targetType::getType() === 'ibexa_content') {
+            if ((int) $target->value === $location->contentId) {
                 return true;
             }
         }

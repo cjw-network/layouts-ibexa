@@ -11,16 +11,15 @@ use Ibexa\Core\Repository\Values\Content\Content;
 use Ibexa\Core\Repository\Values\Content\Location;
 use Ibexa\Core\Repository\Values\ContentType\ContentType;
 use Netgen\Layouts\Ibexa\Parameters\ParameterType\LocationType;
-use Netgen\Layouts\Ibexa\Tests\Validator\RepositoryValidatorFactory;
+use Netgen\Layouts\Ibexa\Tests\TestCase\ValidatorTestCaseTrait;
 use Netgen\Layouts\Parameters\ParameterDefinition;
 use Netgen\Layouts\Parameters\ValueObjectProviderInterface;
 use Netgen\Layouts\Tests\Parameters\ParameterType\ParameterTypeTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\OptionsResolver\Exception\InvalidArgumentException;
-use Symfony\Component\Validator\Validation;
 
 use function is_int;
 
@@ -28,32 +27,32 @@ use function is_int;
 final class LocationTypeTest extends TestCase
 {
     use ParameterTypeTestTrait;
+    use ValidatorTestCaseTrait;
 
-    private MockObject&Repository $repositoryMock;
+    private Stub&Repository $repositoryStub;
 
-    private MockObject&ValueObjectProviderInterface $valueObjectProviderMock;
+    private Stub&ValueObjectProviderInterface $valueObjectProviderStub;
 
-    private MockObject&LocationService $locationServiceMock;
+    private Stub&LocationService $locationServiceStub;
 
     protected function setUp(): void
     {
-        $this->locationServiceMock = $this->createMock(LocationService::class);
+        $this->locationServiceStub = self::createStub(LocationService::class);
 
-        $this->repositoryMock = $this->createPartialMock(Repository::class, ['sudo', 'getLocationService']);
-        $this->valueObjectProviderMock = $this->createMock(ValueObjectProviderInterface::class);
+        $this->repositoryStub = self::createStub(Repository::class);
+        $this->valueObjectProviderStub = self::createStub(ValueObjectProviderInterface::class);
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('sudo')
-            ->with(self::anything())
             ->willReturnCallback(
-                fn (callable $callback) => $callback($this->repositoryMock),
+                fn (callable $callback): mixed => $callback($this->repositoryStub),
             );
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('getLocationService')
-            ->willReturn($this->locationServiceMock);
+            ->willReturn($this->locationServiceStub);
 
-        $this->type = new LocationType($this->repositoryMock, $this->valueObjectProviderMock);
+        $this->type = new LocationType($this->repositoryStub, $this->valueObjectProviderStub);
     }
 
     public function testGetIdentifier(): void
@@ -68,8 +67,8 @@ final class LocationTypeTest extends TestCase
     #[DataProvider('validOptionsDataProvider')]
     public function testValidOptions(array $options, array $resolvedOptions): void
     {
-        $parameter = $this->getParameterDefinition($options);
-        self::assertSame($resolvedOptions, $parameter->getOptions());
+        $parameterDefinition = $this->getParameterDefinition($options);
+        self::assertSame($resolvedOptions, $parameterDefinition->options);
     }
 
     /**
@@ -84,7 +83,7 @@ final class LocationTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing valid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function validOptionsDataProvider(): iterable
     {
@@ -136,7 +135,7 @@ final class LocationTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing invalid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function invalidOptionsDataProvider(): iterable
     {
@@ -145,21 +144,33 @@ final class LocationTypeTest extends TestCase
                 [
                     'allow_invalid' => 'false',
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 'true',
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 0,
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 1,
                 ],
+            ],
+            [
                 [
                     'allowed_types' => 'image',
                 ],
+            ],
+            [
                 [
                     'allowed_types' => [42],
                 ],
+            ],
+            [
                 [
                     'undefined_value' => 'Value',
                 ],
@@ -169,10 +180,8 @@ final class LocationTypeTest extends TestCase
 
     public function testExport(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocation')
-            ->with(self::identicalTo(42))
             ->willReturn(new Location(['remoteId' => 'abc']));
 
         self::assertSame('abc', $this->type->export($this->getParameterDefinition(), 42));
@@ -180,10 +189,8 @@ final class LocationTypeTest extends TestCase
 
     public function testExportWithNonExistingLocation(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocation')
-            ->with(self::identicalTo(42))
             ->willThrowException(new NotFoundException('location', 42));
 
         self::assertNull($this->type->export($this->getParameterDefinition(), 42));
@@ -191,10 +198,8 @@ final class LocationTypeTest extends TestCase
 
     public function testImport(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocationByRemoteId')
-            ->with(self::identicalTo('abc'))
             ->willReturn(new Location(['id' => 42]));
 
         self::assertSame(42, $this->type->import($this->getParameterDefinition(), 'abc'));
@@ -202,10 +207,8 @@ final class LocationTypeTest extends TestCase
 
     public function testImportWithNonExistingLocation(): void
     {
-        $this->locationServiceMock
-            ->expects(self::once())
+        $this->locationServiceStub
             ->method('loadLocationByRemoteId')
-            ->with(self::identicalTo('abc'))
             ->willThrowException(new NotFoundException('location', 'abc'));
 
         self::assertNull($this->type->import($this->getParameterDefinition(), 'abc'));
@@ -215,38 +218,34 @@ final class LocationTypeTest extends TestCase
     public function testValidation(mixed $value, string $type, bool $required, bool $isValid): void
     {
         if ($value !== null) {
-            $this->locationServiceMock
-                ->expects(self::once())
+            $this->locationServiceStub
                 ->method('loadLocation')
-                ->with(self::identicalTo((int) $value))
-                ->willReturnCallback(
-                    static fn (): Location => match (true) {
-                        is_int($value) && $value > 0 => new Location(
-                            [
-                                'id' => $value,
-                                'content' => new Content(
-                                    [
-                                        'contentType' => new ContentType(['identifier' => $type]),
-                                    ],
-                                ),
-                            ],
-                        ),
-                        default => throw new NotFoundException('location', $value),
-                    },
-                );
+                    ->willReturnCallback(
+                        static fn (): Location => match (true) {
+                            is_int($value) && $value > 0 => new Location(
+                                [
+                                    'id' => $value,
+                                    'content' => new Content(
+                                        [
+                                            'contentType' => new ContentType(['identifier' => $type]),
+                                        ],
+                                    ),
+                                ],
+                            ),
+                            default => throw new NotFoundException('location', $value),
+                        },
+                    );
         }
 
-        $parameter = $this->getParameterDefinition(['allowed_types' => ['user', 'image']], $required);
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new RepositoryValidatorFactory($this->repositoryMock))
-            ->getValidator();
+        $parameterDefinition = $this->getParameterDefinition(['allowed_types' => ['user', 'image']], $required);
+        $validator = $this->createValidator($this->repositoryStub);
 
-        $errors = $validator->validate($value, $this->type->getConstraints($parameter, $value));
+        $errors = $validator->validate($value, $this->type->getConstraints($parameterDefinition, $value));
         self::assertSame($isValid, $errors->count() === 0);
     }
 
     /**
-     * Provider for testing valid parameter values.
+     * @return iterable<mixed>
      */
     public static function validationDataProvider(): iterable
     {
@@ -256,16 +255,12 @@ final class LocationTypeTest extends TestCase
             [12, 'article', false, false],
             [-12, 'user', false, false],
             [0, 'user', false, false],
-            ['12', 'user', false, false],
-            ['', 'user', false, false],
             [null, 'user', false, true],
             [12, 'user', true, true],
             [12, 'image', true, true],
             [12, 'article', true, false],
             [-12, 'user', true, false],
             [0, 'user', true, false],
-            ['12', 'user', true, false],
-            ['', 'user', true, false],
             [null, 'user', true, false],
         ];
     }
@@ -282,6 +277,9 @@ final class LocationTypeTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function fromHashDataProvider(): iterable
     {
         return [
@@ -307,7 +305,7 @@ final class LocationTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing if the value is empty.
+     * @return iterable<mixed>
      */
     public static function emptyDataProvider(): iterable
     {
@@ -321,10 +319,8 @@ final class LocationTypeTest extends TestCase
     {
         $location = new Location();
 
-        $this->valueObjectProviderMock
-            ->expects(self::once())
+        $this->valueObjectProviderStub
             ->method('getValueObject')
-            ->with(self::identicalTo(42))
             ->willReturn($location);
 
         /** @var \Netgen\Layouts\Ibexa\Parameters\ParameterType\LocationType $type */

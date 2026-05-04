@@ -14,14 +14,16 @@ use Symfony\Component\Validator\Exception\UnexpectedTypeException;
 
 use function count;
 use function in_array;
-use function is_scalar;
+use function is_int;
 
 /**
  * Validates if the provided value is an ID of a valid location in Ibexa CMS.
  */
 final class LocationValidator extends ConstraintValidator
 {
-    public function __construct(private Repository $repository) {}
+    public function __construct(
+        private Repository $repository,
+    ) {}
 
     public function validate(mixed $value, Constraint $constraint): void
     {
@@ -33,14 +35,13 @@ final class LocationValidator extends ConstraintValidator
             throw new UnexpectedTypeException($constraint, Location::class);
         }
 
-        if (!is_scalar($value)) {
-            throw new UnexpectedTypeException($value, 'scalar');
+        if (!is_int($value)) {
+            throw new UnexpectedTypeException($value, 'int');
         }
 
         try {
-            /** @var \Ibexa\Contracts\Core\Repository\Values\Content\Location $location */
             $location = $this->repository->sudo(
-                fn (): IbexaLocation => $this->repository->getLocationService()->loadLocation((int) $value),
+                static fn (Repository $repository): IbexaLocation => $repository->getLocationService()->loadLocation($value),
             );
 
             if (count($constraint->allowedTypes) > 0) {

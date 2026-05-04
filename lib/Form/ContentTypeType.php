@@ -15,22 +15,26 @@ use function is_array;
 
 final class ContentTypeType extends AbstractType
 {
-    public function __construct(private ContentTypeService $contentTypeService) {}
+    public function __construct(
+        private ContentTypeService $contentTypeService,
+    ) {}
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefault('translation_domain', 'nglayouts_forms');
 
-        $resolver->setDefault('types', []);
-        $resolver->setRequired(['types']);
-        $resolver->setAllowedTypes('types', 'array');
-
         $resolver->setDefault(
             'choices',
-            fn (Options $options): array => $this->getContentTypes($options),
+            fn (Options $options): array => $this->getContentTypes($options['types']),
         );
 
         $resolver->setDefault('choice_translation_domain', false);
+
+        $resolver
+            ->define('types')
+            ->required()
+            ->default([])
+            ->allowedTypes('array');
     }
 
     public function getParent(): string
@@ -41,14 +45,15 @@ final class ContentTypeType extends AbstractType
     /**
      * Returns the allowed content types from Ibexa CMS.
      *
+     * @param array<string, string[]|bool> $configuredGroups
+     *
      * @return array<string, string[]>
      */
-    private function getContentTypes(Options $options): array
+    private function getContentTypes(array $configuredGroups): array
     {
         $allContentTypes = [];
 
         $groups = $this->contentTypeService->loadContentTypeGroups();
-        $configuredGroups = $options['types'];
 
         foreach ($groups as $group) {
             $configuredGroups += [$group->identifier => true];

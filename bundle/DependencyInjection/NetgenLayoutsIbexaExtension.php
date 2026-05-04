@@ -4,26 +4,25 @@ declare(strict_types=1);
 
 namespace Netgen\Bundle\LayoutsIbexaBundle\DependencyInjection;
 
+use Composer\InstalledVersions;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\Config\Loader\DelegatingLoader;
 use Symfony\Component\Config\Loader\LoaderResolver;
 use Symfony\Component\Config\Resource\FileResource;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\PrependExtensionInterface;
 use Symfony\Component\DependencyInjection\Loader\GlobFileLoader;
 use Symfony\Component\DependencyInjection\Loader\YamlFileLoader;
-use Symfony\Component\HttpKernel\DependencyInjection\Extension;
 use Symfony\Component\Yaml\Yaml;
 
 use function array_key_exists;
 use function file_get_contents;
+use function mb_substr;
 
 final class NetgenLayoutsIbexaExtension extends Extension implements PrependExtensionInterface
 {
-    /**
-     * @param mixed[] $configs
-     */
     public function load(array $configs, ContainerBuilder $container): void
     {
         $locator = new FileLocator(__DIR__ . '/../Resources/config');
@@ -63,11 +62,17 @@ final class NetgenLayoutsIbexaExtension extends Extension implements PrependExte
 
     public function prepend(ContainerBuilder $container): void
     {
+        $container->setParameter(
+            'netgen_layouts_ibexa.asset_version',
+            mb_substr(InstalledVersions::getReference('netgen/layouts-ibexa') ?? '', 0, 8),
+        );
+
         $prependConfigs = [
             'block_definitions.yaml' => 'netgen_layouts',
             'block_types.yaml' => 'netgen_layouts',
             'query_types.yaml' => 'netgen_layouts',
             'value_types.yaml' => 'netgen_layouts',
+            'twig.yaml' => 'twig',
             'view/block_view.yaml' => 'netgen_layouts',
             'view/item_view.yaml' => 'netgen_layouts',
             'view/rule_condition_view.yaml' => 'netgen_layouts',
@@ -75,7 +80,7 @@ final class NetgenLayoutsIbexaExtension extends Extension implements PrependExte
             'view/rule_view.yaml' => 'netgen_layouts',
             'view/layout_view.yaml' => 'netgen_layouts',
             'ibexa/image.yaml' => 'ibexa',
-            'framework/twig.yaml' => 'twig',
+            'framework/assets.yaml' => 'framework',
         ];
 
         foreach ($prependConfigs as $configFile => $prependConfig) {

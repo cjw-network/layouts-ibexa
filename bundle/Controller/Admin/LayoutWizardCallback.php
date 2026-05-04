@@ -8,12 +8,12 @@ use Ibexa\Contracts\Core\Repository\Values\Content\Location;
 use Ibexa\Core\MVC\Symfony\Routing\Generator\UrlAliasGenerator;
 use Netgen\Layouts\API\Service\LayoutResolverService;
 use Netgen\Layouts\API\Service\LayoutService;
-use Netgen\Layouts\API\Values\Layout\Layout;
 use Netgen\Layouts\API\Values\LayoutResolver\RuleGroup;
+use Netgen\Layouts\API\Values\Status;
 use Netgen\Layouts\Ibexa\Layout\Resolver\TargetType\Location as LocationTargetType;
-use Ramsey\Uuid\Uuid;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Uid\Uuid;
 
 use function count;
 use function max;
@@ -21,14 +21,17 @@ use function sprintf;
 
 final class LayoutWizardCallback extends Controller
 {
-    public function __construct(private LayoutService $layoutService, private LayoutResolverService $layoutResolverService) {}
+    public function __construct(
+        private LayoutService $layoutService,
+        private LayoutResolverService $layoutResolverService,
+    ) {}
 
     /**
      * Creates a new 1:1 mapping based on data located in the session.
      */
     public function __invoke(Location $location, Request $request): RedirectResponse
     {
-        $wizardId = sprintf('_layouts_ibexa_wizard/%s', $request->query->get('wizardId', ''));
+        $wizardId = sprintf('_layouts_ibexa_wizard/%s', $request->query->getString('wizardId'));
         if (!$request->getSession()->has($wizardId)) {
             return $this->redirectToRoute(
                 UrlAliasGenerator::INTERNAL_CONTENT_VIEW_ROUTE,
@@ -45,7 +48,7 @@ final class LayoutWizardCallback extends Controller
 
         $layoutId = Uuid::fromString($wizardData['layout']);
 
-        if (!$this->layoutService->layoutExists($layoutId, Layout::STATUS_PUBLISHED)) {
+        if (!$this->layoutService->layoutExists($layoutId, Status::Published)) {
             return $this->redirectToRoute(
                 UrlAliasGenerator::INTERNAL_CONTENT_VIEW_ROUTE,
                 [
@@ -62,12 +65,12 @@ final class LayoutWizardCallback extends Controller
         $groupRules = $this->layoutResolverService->loadRulesFromGroup($ruleGroup, 0, 1)->getRules();
         $subGroups = $this->layoutResolverService->loadRuleGroups($ruleGroup, 0, 1)->getRuleGroups();
 
-        $priority1 = count($groupRules) > 0 ? $groupRules[0]->getPriority() + 10 : 0;
-        $priority2 = count($subGroups) > 0 ? $subGroups[0]->getPriority() + 10 : 0;
+        $priority1 = count($groupRules) > 0 ? $groupRules[0]->priority + 10 : 0;
+        $priority2 = count($subGroups) > 0 ? $subGroups[0]->priority + 10 : 0;
 
         $ruleCreateStruct = $this->layoutResolverService->newRuleCreateStruct();
         $ruleCreateStruct->layoutId = $layoutId;
-        $ruleCreateStruct->enabled = (bool) $wizardData['activate_rule'];
+        $ruleCreateStruct->isEnabled = (bool) $wizardData['activate_rule'];
         $ruleCreateStruct->priority = max($priority1, $priority2);
 
         $rule = $this->layoutResolverService->createRule($ruleCreateStruct, $ruleGroup);

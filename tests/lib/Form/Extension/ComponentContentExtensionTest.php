@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Netgen\Layouts\Ibexa\Tests\Form\Extension;
 
-use Netgen\ContentBrowser\Form\Type\ContentBrowserType;
+use Netgen\ContentBrowser\Form\Type\ContentBrowserIntegerType;
 use Netgen\Layouts\API\Values\Block\Block;
 use Netgen\Layouts\Block\BlockDefinition;
 use Netgen\Layouts\Ibexa\Block\BlockDefinition\Handler\ComponentHandler;
@@ -25,14 +25,9 @@ final class ComponentContentExtensionTest extends TestCase
         $this->extension = new ComponentContentExtension();
     }
 
-    public function testGetExtendedType(): void
-    {
-        self::assertSame(ContentBrowserType::class, $this->extension->getExtendedType());
-    }
-
     public function testGetExtendedTypes(): void
     {
-        self::assertSame([ContentBrowserType::class], $this->extension::getExtendedTypes());
+        self::assertSame([ContentBrowserIntegerType::class], [...$this->extension::getExtendedTypes()]);
     }
 
     public function testBuildView(): void
@@ -55,7 +50,7 @@ final class ComponentContentExtensionTest extends TestCase
 
         $formView->parent->parent->vars['block'] = $block;
 
-        $this->extension->buildView($formView, $this->createMock(FormInterface::class), []);
+        $this->extension->buildView($formView, self::createStub(FormInterface::class), []);
 
         self::assertContains('ibexa_component_content', $formView->vars['block_prefixes']);
     }
@@ -80,7 +75,7 @@ final class ComponentContentExtensionTest extends TestCase
 
         $formView->parent->parent->vars['block'] = $block;
 
-        $this->extension->buildView($formView, $this->createMock(FormInterface::class), []);
+        $this->extension->buildView($formView, self::createStub(FormInterface::class), []);
 
         self::assertNotContains('ibexa_component_content', $formView->vars['block_prefixes']);
     }
@@ -90,7 +85,7 @@ final class ComponentContentExtensionTest extends TestCase
         $formView = new FormView();
         $formView->vars['block_prefixes'] = [];
 
-        $this->extension->buildView($formView, $this->createMock(FormInterface::class), []);
+        $this->extension->buildView($formView, self::createStub(FormInterface::class), []);
 
         self::assertNotContains('ibexa_component_content', $formView->vars['block_prefixes']);
     }

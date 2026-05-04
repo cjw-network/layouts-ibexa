@@ -8,6 +8,7 @@ use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 
 use function is_array;
+use function sprintf;
 
 final class DefaultViewTemplatesPass implements CompilerPassInterface
 {
@@ -17,12 +18,12 @@ final class DefaultViewTemplatesPass implements CompilerPassInterface
             return;
         }
 
-        /** @var array<int, string> $siteAccessList */
+        /** @var string[] $siteAccessList */
         $siteAccessList = $container->getParameter('ibexa.site_access.list');
         $scopes = [...['default'], ...$siteAccessList];
 
         foreach ($scopes as $scope) {
-            $scopeParam = "netgen_layouts.{$scope}.view";
+            $scopeParam = sprintf('netgen_layouts.%s.view', $scope);
             if (!$container->hasParameter($scopeParam)) {
                 continue;
             }
@@ -43,7 +44,7 @@ final class DefaultViewTemplatesPass implements CompilerPassInterface
      */
     private function updateRules(ContainerBuilder $container, ?array $allRules): array
     {
-        $allRules = is_array($allRules) ? $allRules : [];
+        $allRules ??= [];
 
         /** @var array<string, mixed[]> $defaultTemplates */
         $defaultTemplates = $container->getParameter('netgen_layouts.default_view_templates');
@@ -74,14 +75,12 @@ final class DefaultViewTemplatesPass implements CompilerPassInterface
      */
     private function addDefaultRule(string $viewName, string $context, array $rules, string $defaultTemplate): array
     {
-        $rules += [
-            "___{$viewName}_{$context}_default___" => [
+        return $rules + [
+            sprintf('___%s_%s_default___', $viewName, $context) => [
                 'template' => $defaultTemplate,
                 'match' => [],
                 'parameters' => [],
             ],
         ];
-
-        return $rules;
     }
 }

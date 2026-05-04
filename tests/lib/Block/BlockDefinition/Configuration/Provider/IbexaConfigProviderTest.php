@@ -9,24 +9,25 @@ use Netgen\Layouts\API\Values\Block\Block;
 use Netgen\Layouts\Block\BlockDefinition\Configuration\ViewType;
 use Netgen\Layouts\Ibexa\Block\BlockDefinition\Configuration\Provider\IbexaConfigProvider;
 use Netgen\Layouts\Parameters\Parameter;
+use Netgen\Layouts\Parameters\ParameterList;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
-use Ramsey\Uuid\Uuid;
+use Symfony\Component\Uid\Uuid;
 
 #[CoversClass(IbexaConfigProvider::class)]
 final class IbexaConfigProviderTest extends TestCase
 {
-    private MockObject&ConfigResolverInterface $configResolverMock;
+    private Stub&ConfigResolverInterface $configResolverStub;
 
     private IbexaConfigProvider $configProvider;
 
     protected function setUp(): void
     {
-        $this->configResolverMock = $this->createMock(ConfigResolverInterface::class);
+        $this->configResolverStub = self::createStub(ConfigResolverInterface::class);
 
         $this->configProvider = new IbexaConfigProvider(
-            $this->configResolverMock,
+            $this->configResolverStub,
             [
                 'cro' => ['group1', 'group2'],
                 'admin' => ['admin_group'],
@@ -38,23 +39,23 @@ final class IbexaConfigProviderTest extends TestCase
 
     public function testProvideViewTypes(): void
     {
-        $blockUuid = Uuid::uuid4();
         $block = Block::fromArray(
             [
-                'id' => $blockUuid,
-                'parameters' => [
-                    'content_type_identifier' => Parameter::fromArray(
-                        [
-                            'value' => 'foo',
-                        ],
-                    ),
-                ],
+                'id' => Uuid::v7(),
+                'parameters' => new ParameterList(
+                    [
+                        'content_type_identifier' => Parameter::fromArray(
+                            [
+                                'value' => 'foo',
+                            ],
+                        ),
+                    ],
+                ),
             ],
         );
 
-        $this->configResolverMock
+        $this->configResolverStub
             ->method('getParameter')
-            ->with(self::identicalTo('content_view'), self::isNull(), self::identicalTo('cro'))
             ->willReturn(
                 [
                     'view_style_1' => [
@@ -135,15 +136,15 @@ final class IbexaConfigProviderTest extends TestCase
         self::assertArrayHasKey('view_style_1', $viewTypes);
         self::assertArrayHasKey('view_style_2', $viewTypes);
 
-        self::assertInstanceOf(ViewType::class, $viewTypes['view_style_1']);
-        self::assertSame('view_style_1', $viewTypes['view_style_1']->getIdentifier());
-        self::assertSame('View Style 1', $viewTypes['view_style_1']->getName());
-        self::assertSame(['param1', 'param2'], $viewTypes['view_style_1']->getValidParameters());
+        self::assertContainsOnlyInstancesOf(ViewType::class, $viewTypes);
 
-        self::assertInstanceOf(ViewType::class, $viewTypes['view_style_2']);
-        self::assertSame('view_style_2', $viewTypes['view_style_2']->getIdentifier());
-        self::assertSame('View Style 2', $viewTypes['view_style_2']->getName());
-        self::assertNull($viewTypes['view_style_2']->getValidParameters());
+        self::assertSame('view_style_1', $viewTypes['view_style_1']->identifier);
+        self::assertSame('View Style 1', $viewTypes['view_style_1']->name);
+        self::assertSame(['param1', 'param2'], $viewTypes['view_style_1']->validParameters);
+
+        self::assertSame('view_style_2', $viewTypes['view_style_2']->identifier);
+        self::assertSame('View Style 2', $viewTypes['view_style_2']->name);
+        self::assertNull($viewTypes['view_style_2']->validParameters);
     }
 
     public function testProvideViewTypesWithoutBlock(): void

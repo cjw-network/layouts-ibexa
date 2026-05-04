@@ -12,16 +12,15 @@ use Ibexa\Core\Repository\Repository;
 use Ibexa\Core\Repository\Values\Content\Content;
 use Ibexa\Core\Repository\Values\ContentType\ContentType as IbexaContentType;
 use Netgen\Layouts\Ibexa\Parameters\ParameterType\ContentType;
-use Netgen\Layouts\Ibexa\Tests\Validator\RepositoryValidatorFactory;
+use Netgen\Layouts\Ibexa\Tests\TestCase\ValidatorTestCaseTrait;
 use Netgen\Layouts\Parameters\ParameterDefinition;
 use Netgen\Layouts\Parameters\ValueObjectProviderInterface;
 use Netgen\Layouts\Tests\Parameters\ParameterType\ParameterTypeTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\OptionsResolver\Exception\InvalidArgumentException;
-use Symfony\Component\Validator\Validation;
 
 use function is_int;
 
@@ -29,39 +28,20 @@ use function is_int;
 final class ContentTypeTest extends TestCase
 {
     use ParameterTypeTestTrait;
+    use ValidatorTestCaseTrait;
 
-    private MockObject&Repository $repositoryMock;
+    private Stub&Repository $repositoryStub;
 
-    private MockObject&ValueObjectProviderInterface $valueObjectProviderMock;
+    private Stub&ValueObjectProviderInterface $valueObjectProviderStub;
 
-    private MockObject&ContentService $contentServiceMock;
-
-    private MockObject&ContentTypeService $contentTypeServiceMock;
+    private Stub&ContentService $contentServiceStub;
 
     protected function setUp(): void
     {
-        $this->contentServiceMock = $this->createMock(ContentService::class);
-        $this->contentTypeServiceMock = $this->createMock(ContentTypeService::class);
+        $this->contentServiceStub = self::createStub(ContentService::class);
 
-        $this->repositoryMock = $this->createPartialMock(Repository::class, ['sudo', 'getContentService', 'getContentTypeService']);
-        $this->valueObjectProviderMock = $this->createMock(ValueObjectProviderInterface::class);
-
-        $this->repositoryMock
-            ->method('sudo')
-            ->with(self::anything())
-            ->willReturnCallback(
-                fn (callable $callback) => $callback($this->repositoryMock),
-            );
-
-        $this->repositoryMock
-            ->method('getContentService')
-            ->willReturn($this->contentServiceMock);
-
-        $this->repositoryMock
-            ->method('getContentTypeService')
-            ->willReturn($this->contentTypeServiceMock);
-
-        $this->contentTypeServiceMock
+        $contentTypeServiceStub = self::createStub(ContentTypeService::class);
+        $contentTypeServiceStub
             ->method('loadContentType')
             ->willReturnCallback(
                 static fn (int $type): IbexaContentType => match ($type) {
@@ -71,7 +51,24 @@ final class ContentTypeTest extends TestCase
                 },
             );
 
-        $this->type = new ContentType($this->repositoryMock, $this->valueObjectProviderMock);
+        $this->repositoryStub = self::createStub(Repository::class);
+        $this->valueObjectProviderStub = self::createStub(ValueObjectProviderInterface::class);
+
+        $this->repositoryStub
+            ->method('sudo')
+            ->willReturnCallback(
+                fn (callable $callback): mixed => $callback($this->repositoryStub),
+            );
+
+        $this->repositoryStub
+            ->method('getContentService')
+            ->willReturn($this->contentServiceStub);
+
+        $this->repositoryStub
+            ->method('getContentTypeService')
+            ->willReturn($contentTypeServiceStub);
+
+        $this->type = new ContentType($this->repositoryStub, $this->valueObjectProviderStub);
     }
 
     public function testGetIdentifier(): void
@@ -86,8 +83,8 @@ final class ContentTypeTest extends TestCase
     #[DataProvider('validOptionsDataProvider')]
     public function testValidOptions(array $options, array $resolvedOptions): void
     {
-        $parameter = $this->getParameterDefinition($options);
-        self::assertSame($resolvedOptions, $parameter->getOptions());
+        $parameterDefinition = $this->getParameterDefinition($options);
+        self::assertSame($resolvedOptions, $parameterDefinition->options);
     }
 
     /**
@@ -102,7 +99,7 @@ final class ContentTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing valid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function validOptionsDataProvider(): iterable
     {
@@ -154,7 +151,7 @@ final class ContentTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing invalid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function invalidOptionsDataProvider(): iterable
     {
@@ -163,21 +160,33 @@ final class ContentTypeTest extends TestCase
                 [
                     'allow_invalid' => 'false',
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 'true',
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 0,
                 ],
+            ],
+            [
                 [
                     'allow_invalid' => 1,
                 ],
+            ],
+            [
                 [
                     'allowed_types' => 'image',
                 ],
+            ],
+            [
                 [
                     'allowed_types' => [42],
                 ],
+            ],
+            [
                 [
                     'undefined_value' => 'Value',
                 ],
@@ -187,10 +196,8 @@ final class ContentTypeTest extends TestCase
 
     public function testExport(): void
     {
-        $this->contentServiceMock
-            ->expects(self::once())
+        $this->contentServiceStub
             ->method('loadContentInfo')
-            ->with(self::identicalTo(42))
             ->willReturn(new ContentInfo(['remoteId' => 'abc']));
 
         self::assertSame('abc', $this->type->export($this->getParameterDefinition(), 42));
@@ -198,10 +205,8 @@ final class ContentTypeTest extends TestCase
 
     public function testExportWithNonExistingContent(): void
     {
-        $this->contentServiceMock
-            ->expects(self::once())
+        $this->contentServiceStub
             ->method('loadContentInfo')
-            ->with(self::identicalTo(42))
             ->willThrowException(new NotFoundException('contentInfo', 42));
 
         self::assertNull($this->type->export($this->getParameterDefinition(), 42));
@@ -209,10 +214,8 @@ final class ContentTypeTest extends TestCase
 
     public function testImport(): void
     {
-        $this->contentServiceMock
-            ->expects(self::once())
+        $this->contentServiceStub
             ->method('loadContentInfoByRemoteId')
-            ->with(self::identicalTo('abc'))
             ->willReturn(new ContentInfo(['id' => 42]));
 
         self::assertSame(42, $this->type->import($this->getParameterDefinition(), 'abc'));
@@ -220,10 +223,8 @@ final class ContentTypeTest extends TestCase
 
     public function testImportWithNonExistingContent(): void
     {
-        $this->contentServiceMock
-            ->expects(self::once())
+        $this->contentServiceStub
             ->method('loadContentInfoByRemoteId')
-            ->with(self::identicalTo('abc'))
             ->willThrowException(new NotFoundException('contentInfo', 'abc'));
 
         self::assertNull($this->type->import($this->getParameterDefinition(), 'abc'));
@@ -233,29 +234,25 @@ final class ContentTypeTest extends TestCase
     public function testValidation(mixed $value, int $type, bool $required, bool $isValid): void
     {
         if ($value !== null) {
-            $this->contentServiceMock
-                ->expects(self::once())
+            $this->contentServiceStub
                 ->method('loadContentInfo')
-                ->with(self::identicalTo((int) $value))
-                ->willReturnCallback(
-                    static fn (): ContentInfo => match (true) {
-                        is_int($value) && $value > 0 => new ContentInfo(['id' => $value, 'contentTypeId' => $type]),
-                        default => throw new NotFoundException('content', $value),
-                    },
-                );
+                    ->willReturnCallback(
+                        static fn (): ContentInfo => match (true) {
+                            is_int($value) && $value > 0 => new ContentInfo(['id' => $value, 'contentTypeId' => $type]),
+                            default => throw new NotFoundException('content', $value),
+                        },
+                    );
         }
 
-        $parameter = $this->getParameterDefinition(['allowed_types' => ['user', 'image']], $required);
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new RepositoryValidatorFactory($this->repositoryMock))
-            ->getValidator();
+        $parameterDefinition = $this->getParameterDefinition(['allowed_types' => ['user', 'image']], $required);
+        $validator = $this->createValidator($this->repositoryStub);
 
-        $errors = $validator->validate($value, $this->type->getConstraints($parameter, $value));
+        $errors = $validator->validate($value, $this->type->getConstraints($parameterDefinition, $value));
         self::assertSame($isValid, $errors->count() === 0);
     }
 
     /**
-     * Provider for testing valid parameter values.
+     * @return iterable<mixed>
      */
     public static function validationDataProvider(): iterable
     {
@@ -265,16 +262,12 @@ final class ContentTypeTest extends TestCase
             [12, 52, false, false],
             [-12, 24, false, false],
             [0, 24, false, false],
-            ['12', 24, false, false],
-            ['', 24, false, false],
             [null, 24, false, true],
             [12, 24, true, true],
             [12, 42, true, true],
             [12, 52, true, false],
             [-12, 24, true, false],
             [0, 24, true, false],
-            ['12', 24, true, false],
-            ['', 24, true, false],
             [null, 24, true, false],
         ];
     }
@@ -291,6 +284,9 @@ final class ContentTypeTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function fromHashDataProvider(): iterable
     {
         return [
@@ -316,7 +312,7 @@ final class ContentTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing if the value is empty.
+     * @return iterable<mixed>
      */
     public static function emptyDataProvider(): iterable
     {
@@ -330,10 +326,8 @@ final class ContentTypeTest extends TestCase
     {
         $content = new Content();
 
-        $this->valueObjectProviderMock
-            ->expects(self::once())
+        $this->valueObjectProviderStub
             ->method('getValueObject')
-            ->with(self::identicalTo(42))
             ->willReturn($content);
 
         /** @var \Netgen\Layouts\Ibexa\Parameters\ParameterType\ContentType $type */

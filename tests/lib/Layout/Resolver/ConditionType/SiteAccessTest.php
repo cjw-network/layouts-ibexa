@@ -6,17 +6,17 @@ namespace Netgen\Layouts\Ibexa\Tests\Layout\Resolver\ConditionType;
 
 use Ibexa\Core\MVC\Symfony\SiteAccess as IbexaSiteAccess;
 use Netgen\Layouts\Ibexa\Layout\Resolver\ConditionType\SiteAccess;
-use Netgen\Layouts\Ibexa\Tests\Validator\ValidatorFactory;
-use Netgen\Layouts\Tests\TestCase\ValidatorFactory as BaseValidatorFactory;
+use Netgen\Layouts\Ibexa\Tests\TestCase\ValidatorTestCaseTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Validator\Validation;
 
 #[CoversClass(SiteAccess::class)]
 final class SiteAccessTest extends TestCase
 {
+    use ValidatorTestCaseTrait;
+
     private SiteAccess $conditionType;
 
     protected function setUp(): void
@@ -32,9 +32,7 @@ final class SiteAccessTest extends TestCase
     #[DataProvider('validationDataProvider')]
     public function testValidation(mixed $value, bool $isValid): void
     {
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new ValidatorFactory($this, new BaseValidatorFactory($this)))
-            ->getValidator();
+        $validator = $this->createValidator();
 
         $errors = $validator->validate($value, $this->conditionType->getConstraints());
         self::assertSame($isValid, $errors->count() === 0);
@@ -57,7 +55,7 @@ final class SiteAccessTest extends TestCase
     }
 
     /**
-     * Provider for testing condition type validation.
+     * @return iterable<mixed>
      */
     public static function validationDataProvider(): iterable
     {
@@ -71,6 +69,9 @@ final class SiteAccessTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function matchesDataProvider(): iterable
     {
         return [

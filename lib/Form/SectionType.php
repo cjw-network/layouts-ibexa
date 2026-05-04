@@ -15,22 +15,26 @@ use function in_array;
 
 final class SectionType extends AbstractType
 {
-    public function __construct(private SectionService $sectionService) {}
+    public function __construct(
+        private SectionService $sectionService,
+    ) {}
 
     public function configureOptions(OptionsResolver $resolver): void
     {
         $resolver->setDefault('translation_domain', 'nglayouts_forms');
 
-        $resolver->setDefault('sections', []);
-        $resolver->setRequired(['sections']);
-        $resolver->setAllowedTypes('sections', 'string[]');
-
         $resolver->setDefault(
             'choices',
-            fn (Options $options): array => $this->getSections($options),
+            fn (Options $options): array => $this->getSections($options['sections']),
         );
 
         $resolver->setDefault('choice_translation_domain', false);
+
+        $resolver
+            ->define('sections')
+            ->required()
+            ->default([])
+            ->allowedTypes('string[]');
     }
 
     public function getParent(): string
@@ -41,15 +45,15 @@ final class SectionType extends AbstractType
     /**
      * Returns the allowed sections from Ibexa CMS.
      *
+     * @param array<string, string[]> $configuredSections
+     *
      * @return array<string, string>
      */
-    private function getSections(Options $options): array
+    private function getSections(array $configuredSections): array
     {
         $allSections = [];
 
-        /** @var \Ibexa\Contracts\Core\Repository\Values\Content\Section[] $sections */
         $sections = $this->sectionService->loadSections();
-        $configuredSections = $options['sections'];
 
         foreach ($sections as $section) {
             if (count($configuredSections) > 0 && !in_array($section->identifier, $configuredSections, true)) {

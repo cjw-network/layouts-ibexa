@@ -9,15 +9,14 @@ use Ibexa\Core\Repository\Repository;
 use Ibexa\Core\Repository\Values\ObjectState\ObjectState as IbexaObjectState;
 use Ibexa\Core\Repository\Values\ObjectState\ObjectStateGroup;
 use Netgen\Layouts\Ibexa\Parameters\ParameterType\ObjectStateType;
-use Netgen\Layouts\Ibexa\Tests\Validator\RepositoryValidatorFactory;
+use Netgen\Layouts\Ibexa\Tests\TestCase\ValidatorTestCaseTrait;
 use Netgen\Layouts\Parameters\ParameterDefinition;
 use Netgen\Layouts\Tests\Parameters\ParameterType\ParameterTypeTestTrait;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\OptionsResolver\Exception\InvalidArgumentException;
-use Symfony\Component\Validator\Validation;
 
 use function is_array;
 
@@ -25,26 +24,26 @@ use function is_array;
 final class ObjectStateTypeTest extends TestCase
 {
     use ParameterTypeTestTrait;
+    use ValidatorTestCaseTrait;
 
-    private MockObject&Repository $repositoryMock;
+    private Stub&Repository $repositoryStub;
 
-    private MockObject&ObjectStateService $objectStateServiceMock;
+    private Stub&ObjectStateService $objectStateServiceStub;
 
     protected function setUp(): void
     {
-        $this->objectStateServiceMock = $this->createMock(ObjectStateService::class);
-        $this->repositoryMock = $this->createPartialMock(Repository::class, ['sudo', 'getObjectStateService']);
+        $this->objectStateServiceStub = self::createStub(ObjectStateService::class);
+        $this->repositoryStub = self::createStub(Repository::class);
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('sudo')
-            ->with(self::anything())
             ->willReturnCallback(
-                fn (callable $callback) => $callback($this->repositoryMock),
+                fn (callable $callback): mixed => $callback($this->repositoryStub),
             );
 
-        $this->repositoryMock
+        $this->repositoryStub
             ->method('getObjectStateService')
-            ->willReturn($this->objectStateServiceMock);
+            ->willReturn($this->objectStateServiceStub);
 
         $this->type = new ObjectStateType();
     }
@@ -61,8 +60,8 @@ final class ObjectStateTypeTest extends TestCase
     #[DataProvider('validOptionsDataProvider')]
     public function testValidOptions(array $options, array $resolvedOptions): void
     {
-        $parameter = $this->getParameterDefinition($options);
-        self::assertSame($resolvedOptions, $parameter->getOptions());
+        $parameterDefinition = $this->getParameterDefinition($options);
+        self::assertSame($resolvedOptions, $parameterDefinition->options);
     }
 
     /**
@@ -77,7 +76,7 @@ final class ObjectStateTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing valid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function validOptionsDataProvider(): iterable
     {
@@ -118,18 +117,18 @@ final class ObjectStateTypeTest extends TestCase
             ],
             [
                 [
-                    'states' => [42],
+                    'states' => ['state1'],
                 ],
                 [
                     'multiple' => false,
-                    'states' => [42],
+                    'states' => ['state1'],
                 ],
             ],
         ];
     }
 
     /**
-     * Provider for testing invalid parameter attributes.
+     * @return iterable<mixed>
      */
     public static function invalidOptionsDataProvider(): iterable
     {
@@ -138,8 +137,15 @@ final class ObjectStateTypeTest extends TestCase
                 [
                     'multiple' => 'true',
                 ],
+            ],
+            [
                 [
                     'undefined_value' => 'Value',
+                ],
+            ],
+            [
+                [
+                    'states' => 'state1',
                 ],
             ],
         ];
@@ -151,11 +157,11 @@ final class ObjectStateTypeTest extends TestCase
         $group1 = new ObjectStateGroup(['identifier' => 'group1']);
         $group2 = new ObjectStateGroup(['identifier' => 'group2']);
 
-        $this->objectStateServiceMock
+        $this->objectStateServiceStub
             ->method('loadObjectStateGroups')
             ->willReturn([$group1, $group2]);
 
-        $this->objectStateServiceMock
+        $this->objectStateServiceStub
             ->method('loadObjectStates')
             ->willReturnMap(
                 [
@@ -184,36 +190,27 @@ final class ObjectStateTypeTest extends TestCase
             );
 
         $options = $value !== null ? ['multiple' => is_array($value)] : [];
-        $parameter = $this->getParameterDefinition($options, $required);
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new RepositoryValidatorFactory($this->repositoryMock))
-            ->getValidator();
+        $parameterDefinition = $this->getParameterDefinition($options, $required);
+        $validator = $this->createValidator($this->repositoryStub);
 
-        $errors = $validator->validate($value, $this->type->getConstraints($parameter, $value));
+        $errors = $validator->validate($value, $this->type->getConstraints($parameterDefinition, $value));
         self::assertSame($isValid, $errors->count() === 0);
     }
 
     #[DataProvider('validationWithEmptyValuesDataProvider')]
     public function testValidationWithEmptyValues(mixed $value, bool $required, bool $isValid): void
     {
-        $this->objectStateServiceMock
-            ->expects(self::never())
-            ->method('loadObjectStateGroups');
-
-        $this->objectStateServiceMock
-            ->expects(self::never())
-            ->method('loadObjectStates');
-
         $options = $value !== null ? ['multiple' => is_array($value)] : [];
-        $parameter = $this->getParameterDefinition($options, $required);
-        $validator = Validation::createValidatorBuilder()
-            ->setConstraintValidatorFactory(new RepositoryValidatorFactory($this->repositoryMock))
-            ->getValidator();
+        $parameterDefinition = $this->getParameterDefinition($options, $required);
+        $validator = $this->createValidator($this->repositoryStub);
 
-        $errors = $validator->validate($value, $this->type->getConstraints($parameter, $value));
+        $errors = $validator->validate($value, $this->type->getConstraints($parameterDefinition, $value));
         self::assertSame($isValid, $errors->count() === 0);
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function validationDataProvider(): iterable
     {
         return [
@@ -234,6 +231,9 @@ final class ObjectStateTypeTest extends TestCase
         ];
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function validationWithEmptyValuesDataProvider(): iterable
     {
         return [
@@ -260,6 +260,9 @@ final class ObjectStateTypeTest extends TestCase
         );
     }
 
+    /**
+     * @return iterable<mixed>
+     */
     public static function fromHashDataProvider(): iterable
     {
         return [
@@ -274,13 +277,13 @@ final class ObjectStateTypeTest extends TestCase
                 false,
             ],
             [
-                42,
-                42,
+                'state1',
+                'state1',
                 false,
             ],
             [
-                [42, 43],
-                42,
+                ['state1', 'state2'],
+                'state1',
                 false,
             ],
             [
@@ -294,13 +297,13 @@ final class ObjectStateTypeTest extends TestCase
                 true,
             ],
             [
-                42,
-                [42],
+                'state1',
+                ['state1'],
                 true,
             ],
             [
-                [42, 43],
-                [42, 43],
+                ['state1', 'state2'],
+                ['state1', 'state2'],
                 true,
             ],
         ];
@@ -313,15 +316,15 @@ final class ObjectStateTypeTest extends TestCase
     }
 
     /**
-     * Provider for testing if the value is empty.
+     * @return iterable<mixed>
      */
     public static function emptyDataProvider(): iterable
     {
         return [
             [null, true],
             [[], true],
-            [42, false],
-            [[42], false],
+            ['state1', false],
+            [['state1'], false],
             [0, false],
             ['42', false],
             ['', false],

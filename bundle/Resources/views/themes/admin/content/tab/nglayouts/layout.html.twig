@@ -9,11 +9,17 @@
     <div class="layout-item">
         <div class="layout-name">{{ layout.name }}</div>
         <div class="layout-description">{{ layout.description }}</div>
-        <div class="layout-modified">{{ layout.modified|nglayouts_format_datetime }}</div>
+        <div class="layout-modified">{{ layout.modified|format_datetime }}</div>
+
+        {% if additional_data|default('') is not empty %}
+            <div class="additional-data">
+                {{ additional_data }}
+            </div>
+        {% endif %}
 
         {% if can_edit %}
             <div class="layout-actions">
-                <a href="{{ macros.layout_path(layout.id.toString) }}" class="btn btn-primary btn-sm js-open-ngl">{{ 'layouts.edit_layout'|trans }}</a>
+                <a href="{{ macros.layout_path(layout.id.toString) }}" class="btn ibexa-btn ibexa-btn--primary ibexa-btn--small js-open-ngl">{{ 'layouts.edit_layout'|trans }}</a>
             </div>
         {% endif %}
 
@@ -38,7 +44,7 @@
                         <h5 class="modal-title">{{ 'layouts.cache.layout.title'|trans({}, 'nglayouts_admin') }}: <strong>{{ layout.name }}</strong></h5>
                         <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                             <svg class="ibexa-icon ibexa-icon--medium" aria-hidden="true">
-                                <use xlink:href="{{ asset('bundles/ibexaadminui/img/ibexa-icons.svg') }}#discard"></use>
+                                <use xlink:href="{{ ibexa_icon_path('discard') }}"></use>
                             </svg>
                         </button>
                     </div>
@@ -46,8 +52,8 @@
                         <p>{{ 'layouts.cache_clear.question'|trans }}</p>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">{{ 'layouts.cache_clear.cancel'|trans }}</button>
-                        <button type="button" class="btn btn-primary js-modal-confirm">{{ 'layouts.cache_clear.submit'|trans }}</button>
+                        <button type="button" class="btn ibexa-btn ibexa-btn--secondary" data-dismiss="modal">{{ 'layouts.cache_clear.cancel'|trans }}</button>
+                        <button type="button" class="btn ibexa-btn ibexa-btn--primary js-modal-confirm">{{ 'layouts.cache_clear.submit'|trans }}</button>
                     </div>
                 </div>
             </div>
