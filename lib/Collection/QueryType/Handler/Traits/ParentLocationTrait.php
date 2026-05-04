@@ -61,7 +61,7 @@ trait ParentLocationTrait
         if ($parameterCollection->getParameter('use_current_location')->value === true) {
             return $this->contentProvider->provideLocation();
         }
-        elseif ( $parameterCollection->getParameter('use_parent_location')->getValue() === true )
+        elseif ( $parameterCollection->getParameter('use_parent_location')->value === true )
         {
             $currentLocation = $this->contentProvider->provideLocation();
 
